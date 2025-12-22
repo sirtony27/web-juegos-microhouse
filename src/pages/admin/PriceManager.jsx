@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { Search, Calculator, ArrowRight, Save, RotateCcw, Filter, DollarSign, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { calculatePrice } from '../../utils/priceUtils';
+import { calculateProductPrice } from '../../utils/pricingUtils';
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
