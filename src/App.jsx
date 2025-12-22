@@ -18,6 +18,10 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings';
 import RequireAuth from './components/RequireAuth';
 
+import { useProductStore } from './store/useProductStore';
+import { useConsoleStore } from './store/useConsoleStore';
+import { useSettingsStore } from './store/useSettingsStore';
+
 import { useAnalytics } from './hooks/useAnalytics';
 
 function App() {
