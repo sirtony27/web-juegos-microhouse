@@ -128,79 +128,73 @@ const AuditInventory = () => {
 
         setEnriching(true);
         const total = filteredItems.length;
-        setProgress({ current: 0, total, show: true, message: 'Buscando metadatos...' });
+        setProgress({ current: 0, total, show: true, message: 'Iniciando turbo-carga...' });
 
         let enrichedCount = 0;
+        let processedCount = 0;
         const newProductsState = [...missingProducts];
 
-        for (let i = 0; i < filteredItems.length; i++) {
-            const item = filteredItems[i];
+        // CONCURRENCY CONTROL
+        // IGDB Limit is ~4 requests/second. 
+        // Each item takes 1 Search + 1 Detail (if found) = 2 Requests.
+        // Safe Concurrency = 2 items at once (4 requests) or 3 items with stagger.
+        const CONCURRENCY_LIMIT = 3;
 
-            // Update Progress
-            setProgress({
-                current: i + 1,
-                total,
-                show: true,
-                message: `Analizando: ${item.name}`
-            });
-
-            // Skip if already has suggested data
-            if (item._suggestedData) continue;
+        const processItem = async (item) => {
+            if (item._suggestedData) return; // Skip if already done
 
             const searchName = cleanTitleForSearch(item.name);
             try {
                 // 1. Search
-                console.log(`[AutoFill] Searching for: "${searchName}" (Original: "${item.name}")`);
+                console.log(`[AutoFill] Searching: "${searchName}"`);
                 const results = await searchGame(searchName);
-                console.log(`[AutoFill] Results for "${searchName}":`, results);
 
                 if (results && results.length > 0) {
                     const bestMatch = results[0];
+                    if (isGoodMatch(searchName, bestMatch.name)) {
+                        // 2. Get Details
+                        const details = await getGameDetails(bestMatch.id, searchName);
+                        if (details) {
+                            details.genres = translateGenres(details.genres);
 
-                    // VALIDATION CHECK
-                    const match = isGoodMatch(searchName, bestMatch.name);
-                    console.log(`[AutoFill] Validating Match: "${searchName}" vs "${bestMatch.name}" -> ${match ? 'MATCH' : 'REJECT'}`);
-
-                    if (match) {
-                        try {
-                            // 2. Get Details (Pass searchName for YouTube Search if needed)
-                            const details = await getGameDetails(bestMatch.id, searchName);
-                            if (details) {
-                                // Translate Genres
-                                details.genres = translateGenres(details.genres);
-
-                                // 3. Update Item
-                                const index = newProductsState.findIndex(p => p.sku === item.sku);
-                                if (index !== -1) {
-                                    newProductsState[index] = {
-                                        ...newProductsState[index],
-                                        _suggestedData: details,
-                                        _matchConfidence: 'High'
-                                    };
-                                    enrichedCount++;
-                                }
+                            // 3. Update State safely using SKU finding
+                            const index = newProductsState.findIndex(p => p.sku === item.sku);
+                            if (index !== -1) {
+                                newProductsState[index] = {
+                                    ...newProductsState[index],
+                                    _suggestedData: details,
+                                    _matchConfidence: 'High'
+                                };
+                                enrichedCount++;
                             }
-                        } catch (detailErr) {
-                            console.error(`[AutoFill] Error fetching details for ${bestMatch.name}:`, detailErr);
                         }
-                    } else {
-                        console.warn(`[AutoFill] Descartado: ${bestMatch.name} no coincide lo suficiente con ${searchName}`);
                     }
-                } else {
-                    console.warn(`[AutoFill] No results found for: "${searchName}"`);
                 }
             } catch (err) {
                 console.error("Auto-fill error for", item.name, err);
+            } finally {
+                processedCount++;
+                setProgress(prev => ({
+                    ...prev,
+                    current: processedCount,
+                    message: `Procesando: ${item.name}`
+                }));
             }
-            // Small delay to be nice
-            await new Promise(r => setTimeout(r, 200));
+        };
+
+        // Chunked Execution to prevent 429s (simple queue)
+        for (let i = 0; i < filteredItems.length; i += CONCURRENCY_LIMIT) {
+            const chunk = filteredItems.slice(i, i + CONCURRENCY_LIMIT);
+            await Promise.all(chunk.map(item => processItem(item)));
+            // Small cooldown between chunks prevents rate limit spikes
+            // 250ms delay after every 3 items
+            await new Promise(r => setTimeout(r, 250));
         }
 
         setMissingProducts(newProductsState);
         setEnriching(false);
-        // Keep 100% for a moment
         setTimeout(() => setProgress(prev => ({ ...prev, show: false })), 1000);
-        toast.success(`Datos encontrados para ${enrichedCount} juegos.`);
+        toast.success(`Turbo-Carga completada: ${enrichedCount} juegos encontrados.`);
     };
 
     const handleBulkImport = async () => {
