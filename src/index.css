@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0f172a;
+    /* Fallback */
+    background: radial-gradient(at 50% 0%, #1e293b 0%, #0f172a 50%, #020617 100%);
+    color: #f8fafc;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+  }
+
+  .neon-border {
+    box-shadow: 0 0 10px rgba(230, 36, 41, 0.3), inset 0 0 10px rgba(230, 36, 41, 0.1);
+  }
+
+  /* Standardized Admin Input Style */
+  .form-input {
+    @apply w-full p-3 border rounded-lg outline-none transition-all duration-200;
+    @apply bg-white border-gray-300 text-gray-900 placeholder:text-gray-500;
+    @apply focus:ring-2 focus:ring-brand-accent focus:border-brand-accent;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed;
+  }
+
+  /* Error state for inputs */
+  .form-input-error {
+    @apply border-red-500 bg-red-50 text-red-900 placeholder:text-red-400 focus:ring-red-500;
+  }
+  
+  /* Success state for inputs */
+  .form-input-success {
+    @apply border-green-500 bg-green-50 text-green-900 placeholder:text-green-400 focus:ring-green-500;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
