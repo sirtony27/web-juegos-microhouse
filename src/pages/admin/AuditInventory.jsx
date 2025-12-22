@@ -204,16 +204,27 @@ const AuditInventory = () => {
     };
 
     const handleBulkImport = async () => {
-        if (!confirm(`¿Estás seguro de importar ${filteredItems.length} productos?`)) return;
+        if (!confirm(`¿Estás seguro de importar TODOS los ${filteredItems.length} productos? (Incluyendo los que no tienen datos)`)) return;
+        await executeImport(filteredItems);
+    };
 
+    const handleImportEnrichedOnly = async () => {
+        const enrichedItems = filteredItems.filter(i => i._suggestedData);
+        if (enrichedItems.length === 0) return toast.error("No hay productos con datos enriquecidos para importar.");
+
+        if (!confirm(`¿Importar solo los ${enrichedItems.length} productos que tienen datos completos?`)) return;
+        await executeImport(enrichedItems);
+    };
+
+    const executeImport = async (itemsToImport) => {
         setLoading(true);
-        const total = filteredItems.length;
+        const total = itemsToImport.length;
         setProgress({ current: 0, total, show: true, message: 'Iniciando importación...' });
 
         try {
             const { bulkImportProducts } = useProductStore.getState();
 
-            const productsToImport = filteredItems.map(item => {
+            const productsPayload = itemsToImport.map(item => {
                 const suggested = item._suggestedData || {};
                 const consoleId = detectConsoleId(item.sku);
                 const costPrice = parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0;
@@ -232,7 +243,7 @@ const AuditInventory = () => {
                 };
             });
 
-            await bulkImportProducts(productsToImport, (current, totalItems) => {
+            await bulkImportProducts(productsPayload, (current, totalItems) => {
                 setProgress({
                     current,
                     total: totalItems,
@@ -246,6 +257,7 @@ const AuditInventory = () => {
 
         } catch (error) {
             console.error(error);
+            toast.error("Error al importar productos.");
         } finally {
             setLoading(false);
             setProgress(prev => ({ ...prev, show: false }));
@@ -342,16 +354,30 @@ const AuditInventory = () => {
                         {enriching ? 'Enriqueciendo...' : 'Auto-Completar Datos'}
                     </button>
 
-                    {/* Bulk Import Button */}
+                    {/* Import Buttons */}
                     {filteredItems.length > 0 && (
-                        <button
-                            onClick={handleBulkImport}
-                            disabled={loading || enriching}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-wait"
-                        >
-                            <Plus size={18} />
-                            Importar {filteredItems.length}
-                        </button>
+                        <>
+                            {/* Only show "Import Enriched" if there are any enriched items */}
+                            {filteredItems.some(i => i._suggestedData) && (
+                                <button
+                                    onClick={handleImportEnrichedOnly}
+                                    disabled={loading || enriching}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all shadow-sm disabled:opacity-70 disabled:cursor-wait font-bold"
+                                >
+                                    <Wand2 size={18} />
+                                    Importar {filteredItems.filter(i => i._suggestedData).length} (Completos)
+                                </button>
+                            )}
+
+                            <button
+                                onClick={handleBulkImport}
+                                disabled={loading || enriching}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-wait"
+                            >
+                                <Plus size={18} />
+                                Importar Todos ({filteredItems.length})
+                            </button>
+                        </>
                     )}
 
                     <button
