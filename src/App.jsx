@@ -9,6 +9,7 @@ import Catalog from './pages/Catalog';
 import Cart from './pages/Cart';
 import Contact from './pages/Contact';
 import GameDetail from './pages/GameDetail';
+import NotFound from './pages/NotFound';
 import ScrollToTop from './components/ScrollToTop';
 import PageTransition from './components/PageTransition';
 
@@ -61,6 +62,8 @@ function App() {
                 </div>
               </PageTransition>
             } />
+            {/* 404 Catch-all */}
+            <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
           </Route>
 
           {/* Admin Login (Standalone) */}
