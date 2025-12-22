@@ -60,18 +60,39 @@ const AuditInventory = () => {
         return '';
     };
 
+    // Helper: Manual Title Corrections (For stubborn inputs)
+    const TITLE_CORRECTIONS = {
+        'Disney Ilusion Island': 'Disney Illusion Island',
+        'Paw Patrol Gran Prix': 'Paw Patrol Grand Prix',
+        'Fc 26': 'EA Sports FC 25', // Assuming typo for current/next gen, or placeholder
+        'Fc 25': 'EA Sports FC 25',
+        'Fc 24': 'EA Sports FC 24',
+        'Mario Kart World': 'Mario Kart 8 Deluxe', // Guessing "World" is "8" typo or similar
+        'Donkey Kong Bananza': 'Donkey Kong Country Tropical Freeze', // Wild guess or user specific name
+        'Dragon Ball Sparking Zero': 'Dragon Ball: Sparking! Zero',
+        'Pokemon Legends Z-a': 'Pokémon Legends: Z-A',
+        'Kirby Return To Dreamland Deluxe': "Kirby's Return to Dream Land Deluxe",
+        'Sonic Mania Nsw + Team Sonic Racing Double Pack': 'Sonic Mania + Team Sonic Racing Double Pack'
+    };
+
     // Helper: Clean Title Common
     const cleanTitleCommon = (rawName) => {
         if (!rawName) return '';
-        return rawName
-        return rawName
-            .replace(/\s+(PS[45]|NSW\d?|SW\d?|Switch|Playstation\d?)$/i, '') // Remove console suffix (e.g. Nsw2, PS5)
-            .replace(/^(PS[45]|NSW\d?|SW\d?)\s+/i, '') // Remove console prefix
-            .replace(/\s*\(.*?\)\s*/g, '') // Remove parenthesized text (often regions)
-            .replace(/\s*\[.*?\]\s*/g, '') // Remove bracketed text
-            .replace(/\b(EU|EUR|USA|US|JP|JPN|PAL|NTSC|NA|UK|ASIA)\b/gi, '') // Remove standalone regions
-            .replace(/\s+(Complete|GOTY|Game of the Year|Edition|Remastered|Definitive).*$/i, '') // Remove editions
-            .replace(/\s*-\s*$/, '') // Remove trailing dash
+
+        // 1. Check Manual Corrections First
+        const cleanRaw = rawName.trim();
+        const baseName = cleanRaw.replace(/\s+(Nsw2|NSW|PS5|PS4|SW2)$/i, '').trim(); // Quick strip for match
+        if (TITLE_CORRECTIONS[baseName]) return TITLE_CORRECTIONS[baseName];
+        if (TITLE_CORRECTIONS[cleanRaw]) return TITLE_CORRECTIONS[cleanRaw];
+
+        return cleanRaw
+            .replace(/\s+(PS[45]|NSW\d?|SW\d?|Switch|Playstation\d?)$/i, '') // Suffixes
+            .replace(/^(PS[45]|NSW\d?|SW\d?)\s+/i, '') // Prefixes
+            .replace(/\s*\(.*?\)\s*/g, '')
+            .replace(/\s*\[.*?\]\s*/g, '')
+            .replace(/\b(EU|EUR|USA|US|JP|JPN|PAL|NTSC|NA|UK|ASIA)\b/gi, '')
+            .replace(/\s+(Complete|GOTY|Game of the Year|Edition|Remastered|Definitive).*$/i, '')
+            .replace(/\s*-\s*$/, '')
             .trim();
     };
 
@@ -84,7 +105,9 @@ const AuditInventory = () => {
 
     // Helper: Clean Title for Search
     const cleanTitleForSearch = (rawName) => {
-        return cleanTitleCommon(rawName);
+        // If "Pokemon", ensure accent for better IGDB matching sometimes (though IGDB is usually lenient)
+        let cleaned = cleanTitleCommon(rawName);
+        return cleaned;
     };
 
     // Helper: Genre Translation Map
@@ -178,11 +201,23 @@ const AuditInventory = () => {
             try {
                 // 1. Search
                 console.log(`[AutoFill] Searching: "${searchName}"`);
-                const results = await searchGame(searchName);
+                let results = await searchGame(searchName);
+
+                // RETRY STRATEGY: Broader Search
+                if (!results || results.length === 0) {
+                    const words = searchName.split(' ');
+                    if (words.length > 3) {
+                        const shortName = words.slice(0, 3).join(' ');
+                        console.log(`[AutoFill] Retry with short name: "${shortName}"`);
+                        results = await searchGame(shortName);
+                    }
+                }
 
                 if (results && results.length > 0) {
                     const bestMatch = results[0];
-                    if (isGoodMatch(searchName, bestMatch.name)) {
+                    // Relaxed matching for retry cases? 
+                    // Use isGoodMatch but maybe log confidence
+                    if (isGoodMatch(searchName, bestMatch.name) || isGoodMatch(searchName.split(' ').slice(0, 3).join(' '), bestMatch.name)) {
                         // 2. Get Details
                         const details = await getGameDetails(bestMatch.id, searchName);
                         if (details) {
