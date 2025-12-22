@@ -4,7 +4,7 @@ import { useConfigStore } from '../../store/useConfigStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut } from 'lucide-react';
-import { Link, useNavigate }react - router - dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
 import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
 
