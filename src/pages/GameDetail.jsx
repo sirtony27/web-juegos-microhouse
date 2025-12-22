@@ -29,7 +29,10 @@ const GameDetail = () => {
     const styleKey = (consoleName || '').toLowerCase().replace(/\s/g, '');
     const isPs5 = styleKey.includes('ps5') || styleKey.includes('playstation5');
     const isPs4 = styleKey.includes('ps4') || styleKey.includes('playstation4');
-    const isSwitch = styleKey.includes('switch') || styleKey.includes('nintendo');
+    const isPs3 = styleKey.includes('ps3') || styleKey.includes('playstation3');
+    const isSwitch2 = styleKey.includes('switch2') || styleKey.includes('sw2') || styleKey.includes('nsw2');
+    const isSwitch = (styleKey.includes('switch') || styleKey.includes('nintendo')) && !isSwitch2;
+
 
     const [isAdded, setIsAdded] = useState(false);
     const [showTrailer, setShowTrailer] = useState(false);
@@ -129,10 +132,22 @@ const GameDetail = () => {
                         <div className="flex flex-wrap items-center gap-3 mb-4">
                             <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-widest border ${isPs5 ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' :
                                 isPs4 ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' :
-                                    'bg-red-500/10 text-red-300 border-red-500/20'}`
+                                    isPs3 ? 'bg-slate-700/50 text-slate-300 border-slate-500/50' :
+                                        isSwitch2 ? 'bg-gradient-to-r from-red-900/50 to-orange-900/50 text-orange-200 border-orange-500/50' :
+                                            'bg-red-500/10 text-red-300 border-red-500/20'}`
                             }>
                                 {consoleName}
                             </span>
+
+                            {/* RATING BADGE */}
+                            {game.rating > 0 && (
+                                <div className={`flex items-center justify-center px-2 py-1 rounded border font-bold text-xs ${game.rating >= 75 ? 'bg-green-600/20 border-green-500/30 text-green-400' :
+                                    game.rating >= 50 ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' :
+                                        'bg-red-500/20 border-red-500/30 text-red-400'
+                                    }`}>
+                                    <span className="mr-1 opacity-70">★</span> {game.rating.toFixed(0)}
+                                </div>
+                            )}
 
                             {game.tags && game.tags.map((tag, i) => (
                                 <span key={i} className="flex items-center gap-1 text-xs text-gray-400 bg-white/5 px-2 py-1 rounded border border-white/5">

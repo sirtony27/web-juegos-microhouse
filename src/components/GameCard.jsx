@@ -26,7 +26,9 @@ const GameCard = ({ game }) => {
     const styleKey = consoleName.toLowerCase().replace(/\s/g, '');
     const isPs5 = styleKey.includes('ps5') || styleKey.includes('playstation5');
     const isPs4 = styleKey.includes('ps4') || styleKey.includes('playstation4');
-    const isSwitch = styleKey.includes('switch') || styleKey.includes('nintendo');
+    const isPs3 = styleKey.includes('ps3') || styleKey.includes('playstation3');
+    const isSwitch2 = styleKey.includes('switch2') || styleKey.includes('sw2') || styleKey.includes('nsw2');
+    const isSwitch = (styleKey.includes('switch') || styleKey.includes('nintendo')) && !isSwitch2;
     const isXbox = styleKey.includes('xbox');
 
     // Resolve styling config
@@ -52,6 +54,20 @@ const GameCard = ({ game }) => {
         border: 'group-hover:border-[#003791]',
         label: 'PS4',
         shadow: 'shadow-blue-900/20'
+    };
+    else if (isPs3) platformConfig = {
+        color: 'bg-slate-900',
+        text: 'text-white',
+        border: 'group-hover:border-slate-500',
+        label: 'PS3',
+        shadow: 'shadow-slate-500/20'
+    };
+    else if (isSwitch2) platformConfig = {
+        color: 'bg-gradient-to-r from-red-600 to-orange-600',
+        text: 'text-white',
+        border: 'group-hover:border-orange-500',
+        label: 'SWITCH 2',
+        shadow: 'shadow-orange-500/20'
     };
     else if (isSwitch) platformConfig = {
         color: 'bg-[#e60012]',
@@ -116,8 +132,8 @@ const GameCard = ({ game }) => {
                     {/* Rating Badge (Metacritic Style) */}
                     {game.rating > 0 && (
                         <div className={`absolute top-8 left-2 z-20 flex items-center justify-center w-8 h-8 rounded border-2 shadow-lg backdrop-blur-md font-bold text-xs ${game.rating >= 75 ? 'bg-green-600/90 border-green-400 text-white' :
-                                game.rating >= 50 ? 'bg-yellow-500/90 border-yellow-300 text-black' :
-                                    'bg-red-500/90 border-red-300 text-white'
+                            game.rating >= 50 ? 'bg-yellow-500/90 border-yellow-300 text-black' :
+                                'bg-red-500/90 border-red-300 text-white'
                             }`}>
                             {game.rating}
                         </div>
