@@ -140,7 +140,7 @@ export const getGameDetails = async (gameId, gameTitle = '') => {
             background_image: fixIgdbImage(data.cover?.url),
             trailer: trailerUrl,
             genres: data.genres?.map(g => g.name) || [],
-            platforms: data.platforms?.map(p => p.platform.name) || []
+            platforms: data.platforms?.map(p => p.name) || []
         };
     } catch (error) {
         console.error("IGDB Details Error:", error);
