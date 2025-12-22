@@ -194,6 +194,71 @@ export const useProductStore = create((set, get) => ({
         }
     },
 
+    // Helper: Fetch Raw Data from Sheet (Shared)
+    fetchSheetData: async () => {
+        // Ensure settings are loaded
+        const { settings } = useSettingsStore.getState();
+        let { sheetUrl } = settings;
+
+        if (!sheetUrl) {
+            await useSettingsStore.getState().fetchSettings();
+            sheetUrl = useSettingsStore.getState().settings.sheetUrl;
+        }
+
+        if (!sheetUrl) throw new Error("Falta URL de Google Sheets");
+
+        const response = await fetch(sheetUrl);
+        if (!response.ok) throw new Error("Error al descargar CSV");
+        const csvText = await response.text();
+
+        return new Promise((resolve, reject) => {
+            Papa.parse(csvText, {
+                header: false,
+                skipEmptyLines: true,
+                complete: (results) => resolve(results.data),
+                error: (err) => reject(err)
+            });
+        });
+    },
+
+    // New: Check for missing products (Sheet vs DB)
+    getMissingProducts: async () => {
+        try {
+            const sheetRows = await get().fetchSheetData();
+            const currentProducts = get().products;
+
+            // Map current SKUs for O(1) lookup
+            const localSkus = new Set(
+                currentProducts
+                    .map(p => p.sku?.toString().trim())
+                    .filter(sku => sku)
+            );
+
+            const missing = [];
+
+            sheetRows.forEach(row => {
+                const sku = row[0] ? row[0].toString().trim() : '';
+                const name = row[1] ? row[1].toString().trim() : '';
+                const price = row[2] ? row[2].toString().trim() : '';
+
+                // Filter by SKU prefix (Games only)
+                const allowedPrefixes = ['PS', 'NSW', 'SW2'];
+                const isGame = allowedPrefixes.some(prefix => sku.toUpperCase().startsWith(prefix));
+
+                // If SKU exists, is valid game prefix, and NOT in local DB
+                if (sku && isGame && !localSkus.has(sku)) {
+                    missing.push({ sku, name, price });
+                }
+            });
+
+            return missing;
+        } catch (error) {
+            console.error("Error checking missing:", error);
+            toast.error("Error al comparar con la hoja de cálculo");
+            return [];
+        }
+    },
+
     // Sync Logic with Cloud Processing (Optimized)
     syncPricesFromSheet: async () => {
         // FORCE FETCH SETTINGS to ensure we have the latest URL
@@ -374,6 +439,86 @@ export const useProductStore = create((set, get) => ({
 
         } catch (error) {
             console.error("Sync Error:", error);
+            throw error;
+        }
+
+    },
+
+    // Bulk Import Action
+    bulkImportProducts: async (productsToImport, onProgress) => {
+        try {
+            const { settings } = useSettingsStore.getState();
+            const { globalMargin, enableVatGlobal, vatRate } = settings;
+            const collectionRef = collection(db, "products");
+
+            let count = 0;
+            const total = productsToImport.length;
+            const CHUNK_SIZE = 450;
+
+            // Process in chunks
+            const chunks = [];
+            for (let i = 0; i < total; i += CHUNK_SIZE) {
+                chunks.push(productsToImport.slice(i, i + CHUNK_SIZE));
+            }
+
+            for (const chunk of chunks) {
+                const currentBatch = writeBatch(db);
+
+                chunk.forEach(product => {
+                    const docRef = doc(collectionRef);
+
+                    // 1. Calculate Price
+                    const margin = product.customMargin || globalMargin;
+                    const { basePrice, finalPrice } = calculateProductPrice(
+                        product.costPrice,
+                        margin,
+                        product.discountPercentage || 0,
+                        settings,
+                        product.manualPrice
+                    );
+
+                    // 2. Slug
+                    const slug = slugify(product.title);
+
+                    // 3. Prepare Data
+                    const dataToSave = {
+                        title: product.title,
+                        supplierName: product.supplierName || product.title,
+                        sku: product.sku || '',
+                        costPrice: parseFloat(product.costPrice) || 0,
+                        price: finalPrice,
+                        basePrice: basePrice,
+                        manualPrice: product.manualPrice || '',
+                        slug: slug,
+                        stock: true,
+                        console: product.console || '',
+                        image: product.image || '',
+                        trailerUrl: product.trailerUrl || '',
+                        description: product.description || '',
+                        tags: product.tags || [],
+                        createdAt: new Date().toISOString(),
+                        isHidden: false
+                    };
+
+                    Object.keys(dataToSave).forEach(key => dataToSave[key] === undefined && delete dataToSave[key]);
+
+                    currentBatch.set(docRef, dataToSave);
+                    count++;
+                });
+
+                await currentBatch.commit();
+
+                // Report Progress
+                if (onProgress) onProgress(count, total);
+            }
+
+            await get().fetchProducts();
+
+            toast.success(`${count} productos importados correctamente`);
+            return count;
+        } catch (error) {
+            console.error("Bulk Import Error:", error);
+            toast.error("Error en importación masiva");
             throw error;
         }
     }

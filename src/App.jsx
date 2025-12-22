@@ -15,6 +15,7 @@ import PageTransition from './components/PageTransition';
 
 import Login from './pages/admin/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AuditInventory from './pages/admin/AuditInventory';
 import AdminSettings from './pages/admin/AdminSettings';
 import RequireAuth from './components/RequireAuth';
 
@@ -79,6 +80,7 @@ function App() {
         }>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="audit" element={<AuditInventory />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>

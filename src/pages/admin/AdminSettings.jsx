@@ -33,7 +33,11 @@ const AdminSettings = () => {
                 sheetUrl: settings.sheetUrl || '',
                 defaultMargin: settings.defaultMargin || 30,
                 vatRate: settings.vatRate || 21,
-                enableVatGlobal: settings.enableVatGlobal || false
+                enableVatGlobal: settings.enableVatGlobal || false,
+                rawgApiKey: settings.rawgApiKey || '',
+                youtubeApiKey: settings.youtubeApiKey || '',
+                igdbClientId: settings.igdbClientId || '',
+                igdbClientSecret: settings.igdbClientSecret || ''
             });
         }
     }, [settings]);
@@ -81,11 +85,18 @@ const AdminSettings = () => {
         e.preventDefault();
 
         // Use async updateSettings from Firestore store
+        console.log("Submitting form data:", formData);
         await updateSettings({
             sheetUrl: formData.sheetUrl,
             globalMargin: formData.defaultMargin, // Map defaultMargin -> globalMargin (store uses globalMargin)
             vatRate: formData.vatRate,
-            enableVatGlobal: formData.enableVatGlobal
+            globalMargin: formData.defaultMargin, // Map defaultMargin -> globalMargin (store uses globalMargin)
+            vatRate: formData.vatRate,
+            enableVatGlobal: formData.enableVatGlobal,
+            rawgApiKey: formData.rawgApiKey,
+            youtubeApiKey: formData.youtubeApiKey,
+            igdbClientId: formData.igdbClientId,
+            igdbClientSecret: formData.igdbClientSecret
         });
 
         // Auto recalculate prices when global config changes
@@ -135,7 +146,7 @@ const AdminSettings = () => {
                                         onChange={handleChange}
                                         placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
                                         className={`form-input pr-10 ${verifyStatus === 'success' ? 'form-input-success' :
-                                                verifyStatus === 'error' ? 'form-input-error' : ''
+                                            verifyStatus === 'error' ? 'form-input-error' : ''
                                             }`}
                                     />
                                     {verifyStatus === 'success' && <CheckCircle className="absolute right-3 top-3 text-green-600" size={20} />}
@@ -202,6 +213,80 @@ const AdminSettings = () => {
                             <label htmlFor="enableVatGlobal" className="cursor-pointer font-medium text-gray-700 select-none pointer-events-none">
                                 Aplicar IVA a todos los productos globalmente (Sobrescribe configuración individual)
                             </label>
+                        </div>
+                    </div>
+
+                    {/* Section 3: API Connections (RAWG) */}
+                    <div className="bg-purple-50/50 p-6 rounded-xl border border-purple-100">
+                        <div className="flex justify-between items-start mb-4">
+                            <h2 className="text-lg font-bold text-brand-dark flex items-center gap-2">
+                                <Globe size={20} className="text-purple-600" /> API de Juegos (RAWG)
+                            </h2>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                API Key (rawg.io)
+                            </label>
+                            <input
+                                name="rawgApiKey"
+                                value={formData.rawgApiKey || ''}
+                                onChange={handleChange}
+                                placeholder="Ingresa tu API Key de RAWG"
+                                type="password"
+                                className="form-input mb-4"
+                            />
+
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                YouTube Data API Key (Opcional)
+                            </label>
+                            <input
+                                name="youtubeApiKey"
+                                value={formData.youtubeApiKey || ''}
+                                onChange={handleChange}
+                                placeholder="Para autocompletar trailers (AI)"
+                                type="password"
+                                className="form-input"
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                                RAWG: Necesaria para datos básicos. YouTube: Necesaria si quieres que busque trailers automáticamente.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Section 4: IGDB API (Official Metadata) */}
+                    <div className="bg-orange-50/50 p-6 rounded-xl border border-orange-100">
+                        <div className="flex justify-between items-start mb-4">
+                            <h2 className="text-lg font-bold text-brand-dark flex items-center gap-2">
+                                <Globe size={20} className="text-orange-600" /> API de Juegos (IGDB - Oficial)
+                            </h2>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                Client ID
+                            </label>
+                            <input
+                                name="igdbClientId"
+                                value={formData.igdbClientId || ''}
+                                onChange={handleChange}
+                                placeholder="Pegar Client ID aquí"
+                                type="password"
+                                className="form-input mb-4"
+                            />
+
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                Client Secret
+                            </label>
+                            <input
+                                name="igdbClientSecret"
+                                value={formData.igdbClientSecret || ''}
+                                onChange={handleChange}
+                                placeholder="Pegar Client Secret aquí"
+                                type="password"
+                                className="form-input"
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                                Fuente oficial de Twitch. Requiere autenticación segura.
+                            </p>
                         </div>
                     </div>
 

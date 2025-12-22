@@ -3,7 +3,7 @@ import { useProductStore } from '../../store/useProductStore';
 import { useConfigStore } from '../../store/useConfigStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut } from 'lucide-react';
+import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
 import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
@@ -196,10 +196,23 @@ const AdminDashboard = () => {
                     <h3 className="text-lg font-bold text-gray-700 mb-4 px-2">Métricas en Tiempo Real</h3>
                     <AnalyticsCharts />
 
-                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100 mb-6">
                         <p className="text-xs text-blue-800">
                             <strong>Tip:</strong> Revisa la "Intención de Compra" para saber qué stock reponer antes de que los clientes te lo pidan.
                         </p>
+                    </div>
+
+                    {/* Tools Links */}
+                    <div className="space-y-4">
+                        <Link to="/admin/audit" className="block bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                    <Search size={20} />
+                                </div>
+                                <h4 className="font-bold text-gray-800">Auditoría de Inventario</h4>
+                            </div>
+                            <p className="text-sm text-gray-500">Detecta juegos faltantes comparando con el Excel.</p>
+                        </Link>
                     </div>
                 </div>
 

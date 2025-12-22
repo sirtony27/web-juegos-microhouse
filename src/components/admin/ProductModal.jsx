@@ -61,19 +61,33 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
     useEffect(() => {
         if (isOpen) {
             if (productToEdit) {
-                // Populate form
-                Object.keys(productToEdit).forEach(key => {
-                    setValue(key, productToEdit[key]);
+                // Populate form with defaults + edit data to ensure cleanup of old state
+                reset({
+                    sku: productToEdit.sku || '',
+                    supplierName: productToEdit.supplierName || '',
+                    title: productToEdit.title || '',
+                    price: productToEdit.price || '',
+                    manualPrice: productToEdit.manualPrice || '',
+                    stock: productToEdit.stock ?? true,
+                    console: productToEdit.console || consoles.find(c => c.active)?.id || '',
+                    image: productToEdit.image || '',
+                    trailerUrl: productToEdit.trailerUrl || '',
+                    customMargin: productToEdit.customMargin || '',
+                    discountPercentage: productToEdit.discountPercentage || '',
+                    description: productToEdit.description || '',
+                    tags: Array.isArray(productToEdit.tags) ? productToEdit.tags.join(',') : (productToEdit.tags || ''),
+                    costPrice: productToEdit.costPrice || ''
+                    // Keep ID if exists to handle updates vs creates in onSubmit
                 });
 
                 // Parse tags for local state
                 if (Array.isArray(productToEdit.tags)) {
                     setSelectedGenres(productToEdit.tags);
-                    setValue('tags', productToEdit.tags.join(',')); // Keep hidden input synced for safety if used
                 } else if (typeof productToEdit.tags === 'string') {
                     const tagsArray = productToEdit.tags.split(',').map(t => t.trim()).filter(Boolean);
                     setSelectedGenres(tagsArray);
-                    setValue('tags', productToEdit.tags);
+                } else {
+                    setSelectedGenres([]);
                 }
             } else {
                 reset({
@@ -89,7 +103,8 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                     customMargin: '',
                     discountPercentage: '',
                     tags: '',
-                    description: ''
+                    description: '',
+                    costPrice: ''
                 });
                 setSelectedGenres([]);
             }
@@ -128,7 +143,7 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
             tags: selectedGenres
         };
 
-        if (productToEdit) {
+        if (productToEdit?.id) {
             updateProduct(productToEdit.id, processed);
         } else {
             addProduct({ ...processed, id: Date.now().toString() });
@@ -237,7 +252,20 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
 
                                 <div>
                                     <label className={labelClasses}>Trailer (YouTube)</label>
-                                    <input {...register('trailerUrl')} className={inputClasses} placeholder="https://youtube.com/..." />
+                                    <div className="flex gap-2">
+                                        <input {...register('trailerUrl')} className={inputClasses} placeholder="https://youtube.com/..." />
+                                        {watch('title') && (
+                                            <a
+                                                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(watch('title') + ' launch trailer')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center shrink-0 border border-red-100"
+                                                title="Buscar en YouTube"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

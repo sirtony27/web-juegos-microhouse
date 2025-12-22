@@ -40,9 +40,14 @@ export const useSettingsStore = create((set) => ({
 
     updateSettings: async (newSettings) => {
         try {
+            console.log("Saving Settings to Firestore:", newSettings);
             const docRef = doc(db, "settings", "global");
-            await updateDoc(docRef, newSettings);
-            set({ settings: newSettings });
+            // Use setDoc with merge: true to ensure we create/update fields without failing
+            await setDoc(docRef, newSettings, { merge: true });
+
+            set(state => ({
+                settings: { ...state.settings, ...newSettings }
+            }));
             toast.success("Configuración actualizada");
         } catch (error) {
             console.error("Error updating settings:", error);
