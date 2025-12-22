@@ -131,9 +131,15 @@ const GameDetail = () => {
                             ))}
                         </div>
 
-                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-none mb-6">
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-none mb-4">
                             {game.title}
                         </h1>
+
+                        {game.description && (
+                            <p className="text-gray-400 text-lg mb-6 leading-relaxed max-w-2xl">
+                                {game.description}
+                            </p>
+                        )}
 
                         <div className="flex items-end gap-6 mb-8 border-b border-white/5 pb-8">
                             <div>
@@ -157,9 +163,7 @@ const GameDetail = () => {
                             )}
                         </div>
 
-                        <div className="prose prose-invert text-gray-300 text-lg leading-relaxed max-w-none mb-10">
-                            <p>{game.description || 'Una aventura épica te espera. Sumérgete en este increíble título disponible ahora en MicroHouse.'}</p>
-                        </div>
+
 
                         {/* Desktop Actions */}
                         <div className="hidden md:flex gap-4 mt-auto">

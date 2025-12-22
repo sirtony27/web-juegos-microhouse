@@ -88,7 +88,8 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                     trailerUrl: '',
                     customMargin: '',
                     discountPercentage: '',
-                    tags: ''
+                    tags: '',
+                    description: ''
                 });
                 setSelectedGenres([]);
             }
@@ -200,8 +201,18 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                                             </select>
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label className={labelClasses}>Descripción</label>
+                                        <textarea
+                                            {...register('description')}
+                                            className={`${inputClasses} h-24 resize-none`}
+                                            placeholder="Descripción detallada del juego..."
+                                        ></textarea>
+                                    </div>
                                 </div>
                             </div>
+
 
                             {/* URLs & Identifiers */}
                             <div className="space-y-4 pt-2">
