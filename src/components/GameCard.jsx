@@ -68,6 +68,19 @@ const GameCard = ({ game }) => {
         shadow: 'shadow-green-500/20'
     };
 
+    // Helper for short names on mobile cards
+    const getShortConsoleName = (name) => {
+        if (!name) return '';
+        const n = name.toLowerCase();
+        if (n.includes('playstation 5')) return 'PS5';
+        if (n.includes('ps5')) return 'PS5';
+        if (n.includes('playstation 4')) return 'PS4';
+        if (n.includes('ps4')) return 'PS4';
+        if (n.includes('switch')) return 'SWITCH';
+        if (n.includes('xbox')) return 'XBOX';
+        return name; // Fallback
+    };
+
     const handleAddToCart = (e) => {
         e.preventDefault();
         e.stopPropagation();
