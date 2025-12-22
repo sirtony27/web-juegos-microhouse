@@ -13,6 +13,7 @@ const AnalyticsCharts = () => {
     const [topCities, setTopCities] = useState([]);
     const [loading, setLoading] = useState(true);
     const { products } = useProductStore();
+    const { consoles } = useConsoleStore();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -67,17 +68,21 @@ const AnalyticsCharts = () => {
 
     // Process Platform Interest (Group Views by Console)
     const platformStats = products.reduce((acc, curr) => {
-        const consoleName = curr.console || 'Otros';
-        // Normalize name roughly
-        let key = consoleName;
-        // Simple normalization based on common console names
-        const lower = consoleName.toLowerCase();
-        if (lower.includes('ps5') || lower.includes('playstation 5')) key = 'PS5';
-        else if (lower.includes('ps4') || lower.includes('playstation 4')) key = 'PS4';
-        else if (lower.includes('switch') || lower.includes('nintendo')) key = 'Switch';
-        else if (lower.includes('xbox')) key = 'Xbox';
+        const rawConsole = curr.console || 'Otros';
+        // Try to find matching console by ID, Name or Slug
+        const foundConsole = consoles.find(c => c.id === rawConsole || c.name === rawConsole || c.slug === rawConsole);
+        let displayName = foundConsole ? foundConsole.name : rawConsole;
 
-        acc[key] = (acc[key] || 0) + (curr.viewCount || 0);
+        // Fallback or Cleaning if no match found (mostly for legacy text data)
+        if (!foundConsole) {
+            const lower = rawConsole.toLowerCase();
+            if (lower.includes('ps5') || lower.includes('playstation 5')) displayName = 'PlayStation 5';
+            else if (lower.includes('ps4') || lower.includes('playstation 4')) displayName = 'PlayStation 4';
+            else if (lower.includes('switch') || lower.includes('nintendo')) displayName = 'Nintendo Switch';
+            else if (lower.includes('xbox')) displayName = 'Xbox';
+        }
+
+        acc[displayName] = (acc[displayName] || 0) + (curr.viewCount || 0);
         return acc;
     }, {});
 
