@@ -31,35 +31,61 @@ const Catalog = () => {
         setActiveGenre(null);
     };
 
+    // Pagination State
+    const ITEMS_PER_PAGE = 24;
+    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+
     // Advanced Filtering Logic
     const filteredGames = useMemo(() => {
+        // Reset pagination when filters change (implicitly handled by useEffect dependencies or derived state?)
+        // Better to reset explicilty in an effect or use a key
         return games.filter(game => {
             if (game.isHidden) return false;
-
             // 1. Console Filter
             if (activeConsole !== 'all' && game.console !== activeConsole) return false;
-
             // 2. Genre Filter
             if (activeGenre) {
-                // Ensure tags exist and are an array
                 const gameTags = Array.isArray(game.tags) ? game.tags : [];
                 if (!gameTags.some(t => t.toLowerCase() === activeGenre.toLowerCase())) return false;
             }
-
             // 3. Search Filter
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
                 if (!game.title.toLowerCase().includes(query)) return false;
             }
-
             return true;
         });
     }, [games, activeConsole, activeGenre, searchQuery]);
 
+    // Reset pagination when filters change
+    useEffect(() => {
+        setVisibleCount(ITEMS_PER_PAGE);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [activeConsole, activeGenre, searchQuery]);
+
+    // Derived Visible Games
+    const visibleGames = useMemo(() => {
+        return filteredGames.slice(0, visibleCount);
+    }, [filteredGames, visibleCount]);
+
+    // Infinite Scroll / Load More Logic
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+                setVisibleCount(prev => {
+                    if (prev >= filteredGames.length) return prev;
+                    return prev + ITEMS_PER_PAGE;
+                });
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [filteredGames.length]);
+
+
     const getTitle = () => {
         if (activeConsole !== 'all') {
-            // Capitalize first letter strictly for display, or just use ID if simple
-            // Better: Find name from store would be ideal, but for now simple capitalization
             return `Catálogo ${activeConsole.toUpperCase()}`;
         }
         return 'Catálogo Completo';
@@ -88,28 +114,37 @@ const Catalog = () => {
 
                 {/* Results Grid */}
                 <AnimatePresence mode="wait">
-                    {filteredGames.length > 0 ? (
-                        <motion.div
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6"
-                        >
-                            {filteredGames.map(game => (
-                                <motion.div
-                                    layout
-                                    key={game.id}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <GameCard game={game} />
-                                </motion.div>
-                            ))}
-                        </motion.div>
+                    {visibleGames.length > 0 ? (
+                        <>
+                            <motion.div
+                                layout
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6"
+                            >
+                                {visibleGames.map(game => (
+                                    <motion.div
+                                        layout
+                                        key={game.id}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        <GameCard game={game} />
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+
+                            {/* Loading Indicator / End of List */}
+                            {visibleCount < filteredGames.length && (
+                                <div className="py-8 text-center text-gray-500 animate-pulse">
+                                    Cargando más juegos...
+                                </div>
+                            )}
+                        </>
                     ) : (
                         /* Empty State */
                         <motion.div
