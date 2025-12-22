@@ -35,6 +35,19 @@ const GameCard = ({ game }) => {
         setTimeout(() => setIsAdded(false), 1500);
     };
 
+    // Helper for short names on mobile cards
+    const getShortConsoleName = (name) => {
+        if (!name) return '';
+        const n = name.toLowerCase();
+        if (n.includes('playstation 5')) return 'PS5';
+        if (n.includes('ps5')) return 'PS5';
+        if (n.includes('playstation 4')) return 'PS4';
+        if (n.includes('ps4')) return 'PS4';
+        if (n.includes('switch')) return 'SWITCH';
+        if (n.includes('xbox')) return 'XBOX';
+        return name; // Fallback
+    };
+
     return (
         <Link to={`/game/${game.slug || game.id}`} className="block h-full group">
             <motion.div
@@ -103,14 +116,14 @@ const GameCard = ({ game }) => {
                         </div>
 
                         <span className={clsx(
-                            "text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded border",
+                            "text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded border whitespace-nowrap",
                             isPs5 ? 'bg-blue-500/10 text-blue-300 border-blue-500/20' :
                                 isPs4 ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' :
                                     isSwitch ? 'bg-red-500/10 text-red-300 border-red-500/20' :
                                         isXbox ? 'bg-green-500/10 text-green-300 border-green-500/20' :
                                             'bg-gray-500/10 text-gray-300 border-gray-500/20'
                         )}>
-                            {consoleName}
+                            {getShortConsoleName(consoleName)}
                         </span>
                     </div>
                 </div>
