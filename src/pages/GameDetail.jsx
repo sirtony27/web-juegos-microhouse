@@ -34,6 +34,12 @@ const GameDetail = () => {
     const [isAdded, setIsAdded] = useState(false);
     const [showTrailer, setShowTrailer] = useState(false);
 
+    useEffect(() => {
+        if (game) {
+            trackProductView(game.id);
+        }
+    }, [game]);
+
     if (loading) {
         return (
             <div className="min-h-screen bg-brand-bg flex items-center justify-center">
@@ -51,11 +57,7 @@ const GameDetail = () => {
         );
     }
 
-    useEffect(() => {
-        if (game) {
-            trackProductView(game.id);
-        }
-    }, [game]);
+
 
     const handleAddToCart = () => {
         if (!game.stock) return;
