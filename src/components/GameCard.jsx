@@ -113,6 +113,16 @@ const GameCard = ({ game }) => {
                         className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 mt-6 ${!game.stock ? 'opacity-40 grayscale' : ''}`}
                     />
 
+                    {/* Rating Badge (Metacritic Style) */}
+                    {game.rating > 0 && (
+                        <div className={`absolute top-8 left-2 z-20 flex items-center justify-center w-8 h-8 rounded border-2 shadow-lg backdrop-blur-md font-bold text-xs ${game.rating >= 75 ? 'bg-green-600/90 border-green-400 text-white' :
+                                game.rating >= 50 ? 'bg-yellow-500/90 border-yellow-300 text-black' :
+                                    'bg-red-500/90 border-red-300 text-white'
+                            }`}>
+                            {game.rating}
+                        </div>
+                    )}
+
                     {/* Discount Badge */}
                     {game.discountPercentage > 0 && (
                         <div className="absolute top-8 right-2 bg-brand-accent text-brand-bg text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm border border-brand-accent/50 font-display tracking-widest shadow-[0_0_10px_rgba(245,158,11,0.4)] z-20">
