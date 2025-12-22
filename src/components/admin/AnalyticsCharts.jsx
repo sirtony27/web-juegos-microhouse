@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../firebase/config';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { Users, MapPin, MousePointerClick, ShoppingCart } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { Users, MousePointerClick, Gamepad2 } from 'lucide-react';
 import { useProductStore } from '../../store/useProductStore';
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const AnalyticsCharts = () => {
     const [dailyStats, setDailyStats] = useState([]);
@@ -56,23 +58,41 @@ const AnalyticsCharts = () => {
         fetchData();
     }, []);
 
-    // Process Top Products (from existing store data which has viewCount/cartCount)
+    // Process Top Products (Views)
     const topViewed = [...products]
         .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
         .slice(0, 5)
         .map(p => ({ name: p.title.substring(0, 15) + '...', value: p.viewCount || 0 }));
 
-    const topCart = [...products]
-        .sort((a, b) => (b.cartCount || 0) - (a.cartCount || 0))
-        .slice(0, 5)
-        .map(p => ({ name: p.title.substring(0, 15) + '...', value: p.cartCount || 0 }));
+    // Process Platform Interest (Group Views by Console)
+    const platformStats = products.reduce((acc, curr) => {
+        const consoleName = curr.console || 'Otros';
+        // Normalize name roughly
+        let key = consoleName;
+        // Simple normalization based on common console names
+        const lower = consoleName.toLowerCase();
+        if (lower.includes('ps5') || lower.includes('playstation 5')) key = 'PS5';
+        else if (lower.includes('ps4') || lower.includes('playstation 4')) key = 'PS4';
+        else if (lower.includes('switch') || lower.includes('nintendo')) key = 'Switch';
+        else if (lower.includes('xbox')) key = 'Xbox';
+
+        acc[key] = (acc[key] || 0) + (curr.viewCount || 0);
+        return acc;
+    }, {});
+
+    const platformData = Object.entries(platformStats)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+
+    // Find the most popular platform
+    const topPlatform = platformData.length > 0 ? platformData[0].name : '-';
 
     if (loading) return <div className="p-8 text-center text-gray-500">Cargando métricas...</div>;
 
     return (
         <div className="space-y-6">
 
-            {/* KPI Cards (Vertical Stack or Grid depending on parent width) */}
+            {/* KPI Cards */}
             <div className="grid grid-cols-1 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
@@ -96,11 +116,11 @@ const AnalyticsCharts = () => {
 
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-green-50 text-green-600 rounded-lg"><ShoppingCart size={20} /></div>
-                        <h3 className="text-sm font-bold text-gray-500 uppercase">Intención de Compra</h3>
+                        <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><Gamepad2 size={20} /></div>
+                        <h3 className="text-sm font-bold text-gray-500 uppercase">Plat. Favorita</h3>
                     </div>
-                    <p className="text-2xl font-display font-bold text-gray-900">
-                        {products.reduce((acc, p) => acc + (p.cartCount || 0), 0)}
+                    <p className="text-2xl font-display font-bold text-gray-900 truncate">
+                        {topPlatform}
                     </p>
                 </div>
             </div>
@@ -152,6 +172,42 @@ const AnalyticsCharts = () => {
                     </div>
                 </div>
 
+                {/* Platform Interest (Pie Chart) */}
+                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-800 mb-4">Interés por Plataforma</h3>
+                    <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={platformData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={40}
+                                    outerRadius={60}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {platformData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-xs font-bold text-gray-400">
+                                    VISTAS
+                                </text>
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="flex flex-wrap justify-center gap-2 mt-2">
+                            {platformData.map((entry, index) => (
+                                <div key={index} className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                    <span className="text-[10px] text-gray-500">{entry.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Most Viewed Games */}
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                     <h3 className="font-bold text-gray-800 mb-4">Más Vistos</h3>
@@ -163,22 +219,6 @@ const AnalyticsCharts = () => {
                                 <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fill: '#4B5563' }} axisLine={false} tickLine={false} />
                                 <Tooltip cursor={{ fill: '#F3F4F6' }} contentStyle={{ borderRadius: '8px' }} />
                                 <Bar dataKey="value" fill="#8B5CF6" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Most Wanted */}
-                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-4">Deseados (Carrito)</h3>
-                    <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart layout="vertical" data={topCart}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fill: '#4B5563' }} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: '#F3F4F6' }} contentStyle={{ borderRadius: '8px' }} />
-                                <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]} barSize={16} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
