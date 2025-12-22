@@ -98,11 +98,11 @@ const PriceManager = () => {
             }
 
             // Recalculate price
-            const calculated = calculatePrice(
+            const calculated = calculateProductPrice(
                 p.costPrice,
                 newSettings.customMargin || settings.defaultMargin,
-                settings.vatRate,
-                newSettings.discountPercentage || 0
+                newSettings.discountPercentage || 0,
+                settings
             );
 
             batchUpdates[p.id] = {
