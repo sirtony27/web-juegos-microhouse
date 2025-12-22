@@ -42,6 +42,35 @@ export default async function handler(request, response) {
         });
 
         const data = await igdbRes.json();
+
+        // TRANSLATION LOGIC (Spanish)
+        try {
+            // Dynamic import for serverless environment compatibility
+            const translate = await import('translate-google');
+
+            // Helper to translate a single item
+            const translateItem = async (item) => {
+                if (item.summary) {
+                    try {
+                        const translated = await translate.default(item.summary, { to: 'es' });
+                        item.summary = translated;
+                    } catch (err) {
+                        console.error("Translation failed for item:", item.name, err);
+                    }
+                }
+                return item;
+            };
+
+            if (Array.isArray(data)) {
+                // Translate all items in parallel (limit parallelism if needed, but for few items it's fine)
+                await Promise.all(data.map(translateItem));
+            } else if (data && data.summary) {
+                await translateItem(data);
+            }
+        } catch (translateErr) {
+            console.error("Translation library error:", translateErr);
+        }
+
         return response.status(200).json(data);
 
     } catch (error) {
