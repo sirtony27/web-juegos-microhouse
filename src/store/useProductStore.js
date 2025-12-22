@@ -42,7 +42,7 @@ const getFriendlyErrorMessage = (error, context) => {
 
 export const useProductStore = create((set, get) => ({
     products: [],
-    loading: false,
+    loading: true,
 
     fetchProducts: async () => {
         set({ loading: true });

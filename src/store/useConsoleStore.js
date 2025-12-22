@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 export const useConsoleStore = create((set, get) => ({
     consoles: [],
-    loading: false,
+    loading: true,
 
     fetchConsoles: async () => {
         set({ loading: true });
