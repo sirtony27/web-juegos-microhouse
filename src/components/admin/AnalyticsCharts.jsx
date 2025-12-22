@@ -4,6 +4,7 @@ import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Users, MousePointerClick, Gamepad2 } from 'lucide-react';
 import { useProductStore } from '../../store/useProductStore';
+import { useConsoleStore } from '../../store/useConsoleStore';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 

@@ -15,8 +15,10 @@ const GameDetail = () => {
     const addToCart = useCartStore((state) => state.addToCart);
     const { trackProductView, trackAddToCart } = useAnalytics();
 
+    const { products, loading } = useProductStore();
+
     // Find by slug (primary) or id (fallback for legacy/direct links types)
-    const game = useProductStore((state) => state.products.find(g => g.slug === slug || g.id === slug));
+    const game = products.find(g => g.slug === slug || g.id === slug);
     const { consoles } = useConsoleStore(); // Get consoles
 
     // Resolve Console Name
@@ -31,6 +33,14 @@ const GameDetail = () => {
 
     const [isAdded, setIsAdded] = useState(false);
     const [showTrailer, setShowTrailer] = useState(false);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-red"></div>
+            </div>
+        );
+    }
 
     if (!game) {
         return (
