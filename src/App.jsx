@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'sonner';
 import MainLayout from './layouts/MainLayout';
@@ -75,6 +75,7 @@ function App() {
               <AdminLayout />
             </RequireAuth>
           }>
+            <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
