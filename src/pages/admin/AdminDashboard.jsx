@@ -3,7 +3,7 @@ import { useProductStore } from '../../store/useProductStore';
 import { useConfigStore } from '../../store/useConfigStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search } from 'lucide-react';
+import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, DollarSign } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
 import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
@@ -212,6 +212,16 @@ const AdminDashboard = () => {
                                 <h4 className="font-bold text-gray-800">Auditoría de Inventario</h4>
                             </div>
                             <p className="text-sm text-gray-500">Detecta juegos faltantes comparando con el Excel.</p>
+                        </Link>
+
+                        <Link to="/admin/pricing" className="block bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all group">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-purple-100 p-2 rounded-lg text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                    <DollarSign size={20} />
+                                </div>
+                                <h4 className="font-bold text-gray-800">Gestor de Precios</h4>
+                            </div>
+                            <p className="text-sm text-gray-500">Edición masiva de precios, descuentos y márgenes.</p>
                         </Link>
                     </div>
                 </div>
