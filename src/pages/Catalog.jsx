@@ -110,6 +110,14 @@ const Catalog = () => {
                     activeGenre={activeGenre}
                     setActiveGenre={setActiveGenre}
                     onClear={handleClearFilters}
+                    counts={useMemo(() => {
+                        const c = {};
+                        games.forEach(g => {
+                            const k = g.console;
+                            c[k] = (c[k] || 0) + 1;
+                        });
+                        return c;
+                    }, [games])}
                 />
 
                 {/* Results Grid */}

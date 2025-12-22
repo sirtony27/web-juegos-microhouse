@@ -9,15 +9,48 @@ const CatalogFilters = ({
     searchQuery, setSearchQuery,
     activeConsole, setActiveConsole,
     activeGenre, setActiveGenre,
-    onClear
+    onClear,
+    counts = {}
 }) => {
     const { consoles } = useConsoleStore();
 
-    // Prepare console tabs: "Todos" + available consoles
-    const consoleTabs = [
-        { id: 'all', name: 'Todos' },
-        ...consoles
+    // Custom Sort Order
+    const sortOrder = [
+        'Nintendo Switch 2',
+        'PlayStation 5',
+        'Nintendo Switch',
+        'PlayStation 4',
+        'Xbox Series',
+        'PlayStation 3'
     ];
+
+    // Prepare console tabs: "Todos" + sorted consoles with counts
+    const consoleTabs = useMemo(() => {
+        // 1. Sort available consoles
+        const sortedConsoles = [...consoles].sort((a, b) => {
+            const indexA = sortOrder.indexOf(a.name);
+            const indexB = sortOrder.indexOf(b.name); // Corrected to use b.name
+
+            // If both defined in list, sort by index
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            // If only A defined, A goes first
+            if (indexA !== -1) return -1;
+            // If only B defined, B goes first
+            if (indexB !== -1) return 1;
+            // Otherwise alphabetical
+            return a.name.localeCompare(b.name);
+        });
+
+        const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+
+        return [
+            { id: 'all', name: `Todos (${totalCount})` },
+            ...sortedConsoles.map(c => ({
+                id: c.id,
+                name: `${c.name} (${counts[c.id] || 0})`
+            }))
+        ];
+    }, [consoles, counts]);
 
     return (
         <div className="sticky top-20 z-30 bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 mb-8 shadow-2xl shadow-black/20">
