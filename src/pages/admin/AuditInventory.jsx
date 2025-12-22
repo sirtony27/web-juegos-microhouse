@@ -233,7 +233,8 @@ const AuditInventory = () => {
                     image: suggested.background_image || '',
                     trailerUrl: suggested.trailer || '',
                     description: suggested.description || '',
-                    tags: suggested.genres || []
+                    tags: suggested.genres || [],
+                    rating: suggested.rating || 0
                 };
             });
 
