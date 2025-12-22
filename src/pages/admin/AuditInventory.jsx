@@ -115,12 +115,42 @@ const AuditInventory = () => {
     };
 
     // Helper: Validate Match
+    // Helper: Validate Match (Fuzzy & Strict)
     const isGoodMatch = (original, result) => {
         if (!original || !result) return false;
+
+        // 1. Strict Substring Check (Fast)
         const cleanOriginal = cleanTitleCommon(original).toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanResult = result.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleanResult.includes(cleanOriginal) || cleanOriginal.includes(cleanResult)) return true;
 
-        return cleanResult.includes(cleanOriginal) || cleanOriginal.includes(cleanResult);
+        // 2. Token Overlap Strategy (Fuzzy)
+        const tokenize = (text) => text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 0);
+        const tokensOrig = tokenize(cleanTitleCommon(original));
+        const tokensRes = tokenize(result);
+
+        if (tokensOrig.length === 0) return false;
+
+        let matches = 0;
+        tokensOrig.forEach(token => {
+            // Exact token match
+            if (tokensRes.includes(token)) {
+                matches++;
+            }
+            // Common Roman Numeral Mappings (1 -> I, 2 -> II)
+            else if (token === '1' && (tokensRes.includes('i') || tokensRes.includes('one'))) matches++;
+            else if (token === '2' && (tokensRes.includes('ii') || tokensRes.includes('two'))) matches++;
+            else if (token === '3' && (tokensRes.includes('iii') || tokensRes.includes('three'))) matches++;
+        });
+
+        // Calculate overlap score relative to the INPUT (what the user has)
+        // We want to ensure most of the user's words are present in the result.
+        const score = matches / tokensOrig.length;
+
+        // Threshold: 0.6 means 3 out of 5 words must match. 
+        // e.g. "The Last Of Part 1" (5 words) vs "The Last Of Us Part I"
+        // Matches: "The", "Last", "Of", "Part", "1"->"I" (5/5) = 1.0 -> Match!
+        return score >= 0.6;
     };
 
     const handleAutoFill = async () => {
