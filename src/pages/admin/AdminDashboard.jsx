@@ -88,107 +88,121 @@ const AdminDashboard = () => {
                 </div>
             )}
 
-            {/* Analytics Section */}
-            <div className="mb-8">
-                <AnalyticsCharts />
-            </div>
+            {/* Dashboard Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px] gap-6 items-start">
 
-            {/* Filters & Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
-                    <input
-                        type="text"
-                        placeholder="Buscar juego..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:border-brand-accent outline-none"
-                    />
-                    <button
-                        onClick={() => openModal(null)}
-                        className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
-                        title="Agregar Producto"
-                    >
-                        <Plus size={20} />
-                    </button>
+                {/* Left Column: Filters & Table */}
+                <div className="space-y-6">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
+                            <input
+                                type="text"
+                                placeholder="Buscar juego..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:border-brand-accent outline-none"
+                            />
+                            <button
+                                onClick={() => openModal(null)}
+                                className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
+                                title="Agregar Producto"
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs md:text-sm uppercase tracking-wider">
+                                        <th className="p-4 font-semibold">Producto</th>
+                                        <th className="p-4 font-semibold text-right hidden md:table-cell">Costo (Prov.)</th>
+                                        <th className="p-4 font-semibold text-center hidden md:table-cell">Margen</th>
+                                        <th className="p-4 font-semibold text-right text-brand-dark">Precio Final</th>
+                                        <th className="p-4 font-semibold text-center hidden sm:table-cell">Estado</th>
+                                        <th className="p-4 font-semibold text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm md:text-base">
+                                    {filteredProducts.map(product => (
+                                        <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
+                                            <td className="p-4 flex items-center gap-3">
+                                                <img src={product.image} alt="" className="w-10 h-10 rounded object-cover bg-gray-200" />
+                                                <div className="max-w-[150px] md:max-w-xs truncate">
+                                                    <div className="font-semibold text-gray-800 truncate" title={product.title}>{product.title}</div>
+                                                    <div className="text-xs text-gray-400 truncate">{product.supplierName}</div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-right font-mono text-gray-600 hidden md:table-cell">
+                                                {product.costPrice ? formatCurrency(product.costPrice) : '-'}
+                                            </td>
+                                            <td className="p-4 text-center hidden md:table-cell">
+                                                {product.customMargin ? (
+                                                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">{product.customMargin}%</span>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs">{defaultMargin}% (Global)</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-right font-bold text-brand-dark">
+                                                {formatCurrency(product.price)}
+                                            </td>
+                                            <td className="p-4 text-center hidden sm:table-cell">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${product.stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {product.stock ? 'STOCK' : 'AGOTADO'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        title="Ocultar/Mostrar"
+                                                        onClick={() => toggleVisibility(product.id)}
+                                                        className={`p-1.5 rounded hover:bg-gray-200 ${product.isHidden ? 'text-red-500' : 'text-gray-400'}`}
+                                                    >
+                                                        {product.isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openModal(product)}
+                                                        className="p-1.5 rounded hover:bg-blue-100 text-blue-600 hidden sm:block"
+                                                        title="Editar"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { if (window.confirm('Eliminar?')) deleteProduct(product.id) }}
+                                                        className="p-1.5 rounded hover:bg-red-100 text-red-600"
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredProducts.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="p-8 text-center text-gray-500">
+                                                No se encontraron productos.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 text-gray-600 text-xs md:text-sm uppercase tracking-wider">
-                                <th className="p-4 font-semibold">Producto</th>
-                                <th className="p-4 font-semibold text-right hidden md:table-cell">Costo (Prov.)</th>
-                                <th className="p-4 font-semibold text-center hidden md:table-cell">Margen</th>
-                                <th className="p-4 font-semibold text-right text-brand-dark">Precio Final</th>
-                                <th className="p-4 font-semibold text-center hidden sm:table-cell">Estado</th>
-                                <th className="p-4 font-semibold text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 text-sm md:text-base">
-                            {filteredProducts.map(product => (
-                                <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
-                                    <td className="p-4 flex items-center gap-3">
-                                        <img src={product.image} alt="" className="w-10 h-10 rounded object-cover bg-gray-200" />
-                                        <div className="max-w-[150px] md:max-w-xs truncate">
-                                            <div className="font-semibold text-gray-800 truncate" title={product.title}>{product.title}</div>
-                                            <div className="text-xs text-gray-400 truncate">{product.supplierName}</div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-right font-mono text-gray-600 hidden md:table-cell">
-                                        {product.costPrice ? formatCurrency(product.costPrice) : '-'}
-                                    </td>
-                                    <td className="p-4 text-center hidden md:table-cell">
-                                        {product.customMargin ? (
-                                            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">{product.customMargin}%</span>
-                                        ) : (
-                                            <span className="text-gray-400 text-xs">{defaultMargin}% (Global)</span>
-                                        )}
-                                    </td>
-                                    <td className="p-4 text-right font-bold text-brand-dark">
-                                        {formatCurrency(product.price)}
-                                    </td>
-                                    <td className="p-4 text-center hidden sm:table-cell">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${product.stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {product.stock ? 'STOCK' : 'AGOTADO'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button
-                                                title="Ocultar/Mostrar"
-                                                onClick={() => toggleVisibility(product.id)}
-                                                className={`p-1.5 rounded hover:bg-gray-200 ${product.isHidden ? 'text-red-500' : 'text-gray-400'}`}
-                                            >
-                                                {product.isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
-                                            </button>
-                                            <button
-                                                onClick={() => openModal(product)}
-                                                className="p-1.5 rounded hover:bg-blue-100 text-blue-600 hidden sm:block"
-                                                title="Editar"
-                                            >
-                                                <Edit size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => { if (window.confirm('Eliminar?')) deleteProduct(product.id) }}
-                                                className="p-1.5 rounded hover:bg-red-100 text-red-600"
-                                                title="Eliminar"
-                                            >
-                                                <Trash size={18} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredProducts.length === 0 && (
-                                <tr>
-                                    <td colSpan="6" className="p-8 text-center text-gray-500">
-                                        No se encontraron productos.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                {/* Right Column: Analytics Sidebar (Sticky) */}
+                <div className="lg:sticky lg:top-4 bg-gray-50/50 rounded-xl">
+                    <h3 className="text-lg font-bold text-gray-700 mb-4 px-2">Métricas en Tiempo Real</h3>
+                    <AnalyticsCharts />
+
+                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                        <p className="text-xs text-blue-800">
+                            <strong>Tip:</strong> Revisa la "Intención de Compra" para saber qué stock reponer antes de que los clientes te lo pidan.
+                        </p>
+                    </div>
                 </div>
+
             </div>
 
             {/* Modal */}
