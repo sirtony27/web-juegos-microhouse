@@ -18,16 +18,14 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings';
 import RequireAuth from './components/RequireAuth';
 
-// Stores
-import { useProductStore } from './store/useProductStore';
-import { useConsoleStore } from './store/useConsoleStore';
-import { useSettingsStore } from './store/useSettingsStore';
+import { useAnalytics } from './hooks/useAnalytics';
 
 function App() {
   const location = useLocation();
   const { fetchProducts } = useProductStore();
   const { fetchConsoles } = useConsoleStore();
   const { fetchSettings } = useSettingsStore();
+  const { trackVisit } = useAnalytics();
 
   useEffect(() => {
     const loadData = async () => {
@@ -36,6 +34,7 @@ function App() {
         fetchConsoles(),
         fetchProducts()
       ]);
+      trackVisit(); // Track daily visit
     };
     loadData();
   }, []);

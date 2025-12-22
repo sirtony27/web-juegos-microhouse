@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProductStore } from '../store/useProductStore';
 import { useConsoleStore } from '../store/useConsoleStore'; // Import Console Store
@@ -7,10 +7,13 @@ import { useCartStore } from '../store/useCartStore';
 import { Check, ArrowLeft, Plus, Play, X, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useAnalytics } from '../hooks/useAnalytics';
+
 const GameDetail = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
     const addToCart = useCartStore((state) => state.addToCart);
+    const { trackProductView, trackAddToCart } = useAnalytics();
 
     // Find by slug (primary) or id (fallback for legacy/direct links types)
     const game = useProductStore((state) => state.products.find(g => g.slug === slug || g.id === slug));
@@ -38,9 +41,16 @@ const GameDetail = () => {
         );
     }
 
+    useEffect(() => {
+        if (game) {
+            trackProductView(game.id);
+        }
+    }, [game]);
+
     const handleAddToCart = () => {
         if (!game.stock) return;
         addToCart(game);
+        trackAddToCart(game.id);
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 2000);
     };

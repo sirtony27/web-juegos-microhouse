@@ -8,10 +8,12 @@ import { Link } from 'react-router-dom';
 import FadeImage from './ui/FadeImage';
 
 import { useConsoleStore } from '../store/useConsoleStore';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const GameCard = ({ game }) => {
     const addToCart = useCartStore((state) => state.addToCart);
     const { consoles } = useConsoleStore(); // Get consoles from store
+    const { trackAddToCart } = useAnalytics();
 
     const [imageError, setImageError] = useState(false);
     const [isAdded, setIsAdded] = useState(false);
@@ -31,6 +33,7 @@ const GameCard = ({ game }) => {
         e.preventDefault();
         e.stopPropagation();
         addToCart(game);
+        trackAddToCart(game.id);
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 1500);
     };

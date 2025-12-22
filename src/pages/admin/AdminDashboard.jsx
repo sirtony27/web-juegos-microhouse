@@ -4,8 +4,9 @@ import { useConfigStore } from '../../store/useConfigStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate }react - router - dom';
 import ProductModal from '../../components/admin/ProductModal';
+import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -86,6 +87,11 @@ const AdminDashboard = () => {
                     {lastSyncResult}
                 </div>
             )}
+
+            {/* Analytics Section */}
+            <div className="mb-8">
+                <AnalyticsCharts />
+            </div>
 
             {/* Filters & Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
