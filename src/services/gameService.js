@@ -1,5 +1,6 @@
 import { db } from '../firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 /**
  * Service to interact with IGDB API via Vercel Proxy
@@ -28,23 +29,36 @@ const getApiKeys = async () => {
  */
 const fetchIGDB = async (endpoint, query) => {
     const keys = await getApiKeys();
-    if (!keys.clientId || !keys.clientSecret) throw new Error("Credenciales IGDB no configuradas en Admin");
+    if (!keys.clientId || !keys.clientSecret) {
+        toast.error("Faltan Credenciales de IGDB en Configuración");
+        throw new Error("Credenciales IGDB no configuradas en Admin");
+    }
 
-    const response = await fetch('/api/igdb', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            clientId: keys.clientId,
-            clientSecret: keys.clientSecret,
-            endpoint: endpoint,
-            query: query
-        })
-    });
+    try {
+        const response = await fetch('/api/igdb', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId: keys.clientId,
+                clientSecret: keys.clientSecret,
+                endpoint: endpoint,
+                query: query
+            })
+        });
 
-    if (!response.ok) throw new Error("Error connecting to IGDB Proxy");
-    return await response.json();
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("IGDB Proxy Error Body:", errorText);
+            throw new Error(`Error ${response.status}: ${errorText}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("IGDB Fetch Error:", error);
+        toast.error(`Error de Conexión IGDB: ${error.message}`);
+        throw error;
+    }
 };
 
 /**

@@ -155,32 +155,44 @@ const AuditInventory = () => {
             const searchName = cleanTitleForSearch(item.name);
             try {
                 // 1. Search
+                console.log(`[AutoFill] Searching for: "${searchName}" (Original: "${item.name}")`);
                 const results = await searchGame(searchName);
+                console.log(`[AutoFill] Results for "${searchName}":`, results);
+
                 if (results && results.length > 0) {
                     const bestMatch = results[0];
 
                     // VALIDATION CHECK
-                    if (isGoodMatch(searchName, bestMatch.name)) {
-                        // 2. Get Details (Pass searchName for YouTube Search if needed)
-                        const details = await getGameDetails(bestMatch.id, searchName);
-                        if (details) {
-                            // Translate Genres
-                            details.genres = translateGenres(details.genres);
+                    const match = isGoodMatch(searchName, bestMatch.name);
+                    console.log(`[AutoFill] Validating Match: "${searchName}" vs "${bestMatch.name}" -> ${match ? 'MATCH' : 'REJECT'}`);
 
-                            // 3. Update Item
-                            const index = newProductsState.findIndex(p => p.sku === item.sku);
-                            if (index !== -1) {
-                                newProductsState[index] = {
-                                    ...newProductsState[index],
-                                    _suggestedData: details,
-                                    _matchConfidence: 'High'
-                                };
-                                enrichedCount++;
+                    if (match) {
+                        try {
+                            // 2. Get Details (Pass searchName for YouTube Search if needed)
+                            const details = await getGameDetails(bestMatch.id, searchName);
+                            if (details) {
+                                // Translate Genres
+                                details.genres = translateGenres(details.genres);
+
+                                // 3. Update Item
+                                const index = newProductsState.findIndex(p => p.sku === item.sku);
+                                if (index !== -1) {
+                                    newProductsState[index] = {
+                                        ...newProductsState[index],
+                                        _suggestedData: details,
+                                        _matchConfidence: 'High'
+                                    };
+                                    enrichedCount++;
+                                }
                             }
+                        } catch (detailErr) {
+                            console.error(`[AutoFill] Error fetching details for ${bestMatch.name}:`, detailErr);
                         }
                     } else {
-                        console.warn(`Descartado: ${bestMatch.name} no coincide con ${searchName}`);
+                        console.warn(`[AutoFill] Descartado: ${bestMatch.name} no coincide lo suficiente con ${searchName}`);
                     }
+                } else {
+                    console.warn(`[AutoFill] No results found for: "${searchName}"`);
                 }
             } catch (err) {
                 console.error("Auto-fill error for", item.name, err);
