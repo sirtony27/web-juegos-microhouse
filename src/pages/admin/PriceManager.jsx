@@ -266,7 +266,7 @@ const PriceManager = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filteredItems.length === 0 ? (
+                            {filteredProducts.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="p-8 text-center text-gray-400">
                                         No se encontraron productos con los filtros actuales.
