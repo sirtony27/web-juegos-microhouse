@@ -1,11 +1,15 @@
 import { db } from '../firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 /**
  * Service to interact with IGDB API via Vercel Proxy
+ * Includes Smart Caching in Firestore
  */
 const BASE_URL = '/api/igdb';
+
+// Cache Duration: 30 Days (in milliseconds)
+const CACHE_DURATION = 30 * 24 * 60 * 60 * 1000;
 
 // Helper to get API Key from Firestore
 const getApiKeys = async () => {
@@ -22,6 +26,39 @@ const getApiKeys = async () => {
         console.error("Error fetching API Key:", error);
     }
     return { clientId: null, clientSecret: null };
+};
+
+// --- CACHE HELPERS ---
+
+const checkCache = async (cacheId) => {
+    try {
+        const docRef = doc(db, "api_cache", cacheId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const now = Date.now();
+            const cachedTime = data.updatedAt?.toMillis() || 0;
+            // Check if valid (not older than 30 days)
+            if (now - cachedTime < CACHE_DURATION) {
+                console.log(`[CACHE HIT] ${cacheId}`);
+                return data.payload;
+            }
+        }
+    } catch (err) {
+        console.warn("Cache check failed", err);
+    }
+    return null;
+};
+
+const saveToCache = async (cacheId, payload) => {
+    try {
+        await setDoc(doc(db, "api_cache", cacheId), {
+            payload,
+            updatedAt: serverTimestamp()
+        });
+    } catch (err) {
+        console.warn("Cache save failed", err);
+    }
 };
 
 /**
@@ -66,18 +103,22 @@ const fetchIGDB = async (endpoint, query) => {
  */
 const fixIgdbImage = (url) => {
     if (!url) return '';
-    // url comes as "//images.igdb.com/igdb/image/upload/t_thumb/..."
-    // we want "https://..." and "t_1080p" or "t_720p" or "t_cover_big"
     if (url.startsWith('//')) url = 'https:' + url;
     return url.replace('t_thumb', 't_1080p');
 };
 
 /**
- * Search for a game by title using IGDB
- * @param {string} query - Game title
- * @returns {Promise<Array>} List of games
+ * Search for a game by title using IGDB (Cached)
  */
 export const searchGame = async (query) => {
+    // Sanitize key for Firestore doc ID restrictions
+    const safeQuery = query.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    const cacheKey = `search_${safeQuery}`;
+
+    // 1. Check Cache
+    const cached = await checkCache(cacheKey);
+    if (cached) return cached;
+
     try {
         // IGDB Query Language
         const igdbQuery = `
@@ -89,12 +130,19 @@ export const searchGame = async (query) => {
         const results = await fetchIGDB('games', igdbQuery);
 
         // Map to common format
-        return results.map(game => ({
+        const mappedResults = results.map(game => ({
             id: game.id,
             name: game.name,
             released: game.first_release_date ? new Date(game.first_release_date * 1000).toISOString().split('T')[0] : '',
-            background_image: fixIgdbImage(game.cover?.url) // Preview image
+            background_image: fixIgdbImage(game.cover?.url)
         }));
+
+        // 2. Save Cache (Only if results found)
+        if (mappedResults.length > 0) {
+            await saveToCache(cacheKey, mappedResults);
+        }
+
+        return mappedResults;
     } catch (error) {
         console.error("IGDB Search Error:", error);
         return [];
@@ -102,16 +150,19 @@ export const searchGame = async (query) => {
 };
 
 /**
- * Get detailed game info from IGDB
- * @param {number} gameId 
- * @param {string} gameTitle - Legacy support, generally unused for IGDB direct
- * @returns {Promise<Object>} Game details
+ * Get detailed game info from IGDB (Cached)
  */
 export const getGameDetails = async (gameId, gameTitle = '') => {
+    const cacheKey = `game_${gameId}`;
+
+    // 1. Check Cache
+    const cached = await checkCache(cacheKey);
+    if (cached) return cached;
+
     try {
         // Detailed query
         const igdbQuery = `
-            fields name, summary, url, rating, first_release_date,
+            fields name, summary, url, rating, rating_count, first_release_date,
             cover.url, 
             genres.name, 
             platforms.name, 
@@ -124,29 +175,33 @@ export const getGameDetails = async (gameId, gameTitle = '') => {
 
         const data = results[0];
 
-        // Extract Trailer (Find one with 'Trailer' in name? Or just first video?)
-        // IGDB returns video_id which is the YouTube ID.
+        // Extract Trailer
         let trailerUrl = '';
         if (data.videos && data.videos.length > 0) {
-            // Just take the first one or logic to find "Trailer"
             trailerUrl = `https://www.youtube.com/watch?v=${data.videos[0].video_id}`;
         }
 
-        return {
+        const finalData = {
             description: data.summary || '',
             website: data.url,
-            metacritic: data.rating ? Math.round(data.rating) : 0, // Converting 0-100 float to int
+            rating: data.rating ? Math.round(data.rating) : 0, // 0-100 Score
+            rating_count: data.rating_count || 0,
             released: data.first_release_date ? new Date(data.first_release_date * 1000).toISOString().split('T')[0] : null,
             background_image: fixIgdbImage(data.cover?.url),
             trailer: trailerUrl,
             genres: data.genres?.map(g => g.name) || [],
             platforms: data.platforms?.map(p => p.name) || []
         };
+
+        // 2. Save Cache
+        await saveToCache(cacheKey, finalData);
+
+        return finalData;
     } catch (error) {
         console.error("IGDB Details Error:", error);
         return null;
     }
 };
 
-// Legacy Placeholder (Not used but kept for exports if checking)
+// Legacy Placeholder
 export const searchYoutubeTrailer = async () => '';
