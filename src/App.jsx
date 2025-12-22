@@ -16,10 +16,13 @@ import PageTransition from './components/PageTransition';
 import Login from './pages/admin/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AuditInventory from './pages/admin/AuditInventory';
-import AdminSettings from './pages/admin/AdminSettings';
-import RequireAuth from './components/RequireAuth';
+import PriceManager from './pages/admin/PriceManager';
+// ... (imports)
 
-import { useProductStore } from './store/useProductStore';
+// ... (in Admin Route)
+          <Route path="audit" element={<AuditInventory />} />
+          <Route path="pricing" element={<PriceManager />} />
+          <Route path="settings" element={<AdminSettings />} />
 import { useConsoleStore } from './store/useConsoleStore';
 import { useSettingsStore } from './store/useSettingsStore';
 
