@@ -64,8 +64,9 @@ const AuditInventory = () => {
     const cleanTitleCommon = (rawName) => {
         if (!rawName) return '';
         return rawName
-            .replace(/\s+(PS4|PS5|NSW|SW2|Switch|Playstation)$/i, '') // Remove console suffix
-            .replace(/^(PS4|PS5|NSW|SW2)\s+/i, '') // Remove console prefix
+        return rawName
+            .replace(/\s+(PS[45]|NSW\d?|SW\d?|Switch|Playstation\d?)$/i, '') // Remove console suffix (e.g. Nsw2, PS5)
+            .replace(/^(PS[45]|NSW\d?|SW\d?)\s+/i, '') // Remove console prefix
             .replace(/\s*\(.*?\)\s*/g, '') // Remove parenthesized text (often regions)
             .replace(/\s*\[.*?\]\s*/g, '') // Remove bracketed text
             .replace(/\b(EU|EUR|USA|US|JP|JPN|PAL|NTSC|NA|UK|ASIA)\b/gi, '') // Remove standalone regions
