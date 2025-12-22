@@ -34,6 +34,16 @@ const GameDetail = () => {
     const [isAdded, setIsAdded] = useState(false);
     const [showTrailer, setShowTrailer] = useState(false);
 
+    // Extract YouTube ID from URL or use ID directly
+    const getYouTubeId = (url) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const trailerId = game?.trailerId || getYouTubeId(game?.trailerUrl);
+
     useEffect(() => {
         if (game) {
             trackProductView(game.id);
@@ -150,7 +160,7 @@ const GameDetail = () => {
                             </div>
 
                             {/* WATCH TRAILER BUTTON */}
-                            {game.trailerId && (
+                            {trailerId && (
                                 <button
                                     onClick={() => setShowTrailer(true)}
                                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 group mb-2"
@@ -200,7 +210,7 @@ const GameDetail = () => {
 
             {/* TRAILER MODAL */}
             <AnimatePresence>
-                {showTrailer && game.trailerId && (
+                {showTrailer && trailerId && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -217,7 +227,7 @@ const GameDetail = () => {
                             </button>
                             <iframe
                                 className="w-full h-full"
-                                src={`https://www.youtube.com/embed/${game.trailerId}?autoplay=1`}
+                                src={`https://www.youtube.com/embed/${trailerId}?autoplay=1`}
                                 title="YouTube video player"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
