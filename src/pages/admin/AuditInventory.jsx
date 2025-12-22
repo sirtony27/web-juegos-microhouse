@@ -64,26 +64,21 @@ const AuditInventory = () => {
     const cleanTitleCommon = (rawName) => {
         if (!rawName) return '';
         return rawName
-            .replace(/\s+(PS4|PS5|NSW|SW2|Switch|Playstation)$/i, '') // Remove console suffix at end
-            .replace(/^(PS4|PS5|NSW|SW2)\s+/i, '') // Remove console prefix at start
-            .replace(/\s*\(.*?\)\s*/g, '') // Remove parenthesized text like (USA)
+            .replace(/\s+(PS4|PS5|NSW|SW2|Switch|Playstation)$/i, '') // Remove console suffix
+            .replace(/^(PS4|PS5|NSW|SW2)\s+/i, '') // Remove console prefix
+            .replace(/\s*\(.*?\)\s*/g, '') // Remove parenthesized text (often regions)
             .replace(/\s*\[.*?\]\s*/g, '') // Remove bracketed text
-            .replace(/\s+(Complete|GOTY|Game of the Year|Edition|Remastered|Definitive).*$/i, '') // Remove edition suffixes roughly for search
+            .replace(/\b(EU|EUR|USA|US|JP|JPN|PAL|NTSC|NA|UK|ASIA)\b/gi, '') // Remove standalone regions
+            .replace(/\s+(Complete|GOTY|Game of the Year|Edition|Remastered|Definitive).*$/i, '') // Remove editions
+            .replace(/\s*-\s*$/, '') // Remove trailing dash
             .trim();
     };
 
     // Helper: Format Name (Capitalize)
     const formatTitle = (title) => {
         if (!title) return '';
-        // Use common cleaner to remove console stuff
-        const noConsole = title
-            .replace(/\s+(PS4|PS5|NSW|SW2|Switch|Playstation)$/i, '')
-            .replace(/^(PS4|PS5|NSW|SW2)\s+/i, '')
-            .replace(/\s*\(.*?\)\s*/g, '')
-            .replace(/\s*\[.*?\]\s*/g, '')
-            .trim();
-
-        return noConsole.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+        const cleaned = cleanTitleCommon(title);
+        return cleaned.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     };
 
     // Helper: Clean Title for Search
