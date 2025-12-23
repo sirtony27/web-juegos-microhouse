@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProductStore } from '../store/useProductStore';
-import { useConsoleStore } from '../store/useConsoleStore'; // Import Console Store
+import { useConsoleStore } from '../store/useConsoleStore';
 import { formatCurrency } from '../utils/formatCurrency';
 import { useCartStore } from '../store/useCartStore';
 import { Check, ArrowLeft, Plus, Play, X, Tag } from 'lucide-react';
@@ -19,11 +19,16 @@ const GameDetail = () => {
 
     // Find by slug (primary) or id (fallback for legacy/direct links types)
     const game = products.find(g => g.slug === slug || g.id === slug);
-    const { consoles } = useConsoleStore(); // Get consoles
+    const { consoles } = useConsoleStore();
 
-    // Resolve Console Name
-    const foundConsole = consoles.find(c => c.id === game?.console || c.name === game?.console);
-    const consoleName = foundConsole ? foundConsole.name : game?.console;
+    // Resolve Console Name (Case insensitive match)
+    const foundConsole = consoles.find(c =>
+        (c.id === game?.console) ||
+        (c.name === game?.console) ||
+        (c.id.toLowerCase() === (game?.console || '').toLowerCase()) ||
+        (c.name.toLowerCase() === (game?.console || '').toLowerCase())
+    );
+    const consoleName = foundConsole ? foundConsole.name : (game?.console || 'Sin Plataforma');
 
     // Normalize for styling
     const styleKey = (consoleName || '').toLowerCase().replace(/\s/g, '');
@@ -70,8 +75,6 @@ const GameDetail = () => {
         );
     }
 
-
-
     const handleAddToCart = () => {
         if (!game.stock) return;
         addToCart(game);
@@ -102,12 +105,13 @@ const GameDetail = () => {
                 <div className="flex flex-col md:flex-row gap-8 lg:gap-16">
 
                     {/* LEFT COLUMN: IMAGE */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
+                    <div
                         className="w-full md:w-[400px] lg:w-[450px] flex-shrink-0"
                     >
-                        <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 aspect-[3/4] group">
+                        <motion.div
+                            className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 aspect-[3/4] group"
+                            layoutId={`product-image-${game.id}`}
+                        >
                             <img
                                 src={game.image}
                                 alt={game.title}
@@ -118,8 +122,8 @@ const GameDetail = () => {
                                     <span className="text-white px-6 py-2 font-display text-2xl font-bold tracking-widest border-2 border-white/20 bg-black/50 rounded-lg">AGOTADO</span>
                                 </div>
                             )}
-                        </div>
-                    </motion.div>
+                        </motion.div>
+                    </div>
 
                     {/* RIGHT COLUMN: INFO */}
                     <motion.div
@@ -149,22 +153,25 @@ const GameDetail = () => {
                                 </div>
                             )}
 
-                            {game.tags && game.tags.map((tag, i) => (
-                                <span key={i} className="flex items-center gap-1 text-xs text-gray-400 bg-white/5 px-2 py-1 rounded border border-white/5">
-                                    <Tag size={12} /> {tag}
-                                </span>
-                            ))}
+                            {/* GENRES / TAGS */}
+                            {game.tags && game.tags.length > 0 ? (
+                                game.tags.map((tag, i) => (
+                                    <span key={i} className="flex items-center gap-1 text-xs text-gray-400 bg-white/5 px-2 py-1 rounded border border-white/5">
+                                        <Tag size={12} /> {tag}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-xs text-gray-600 italic">Sin género</span>
+                            )}
                         </div>
 
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-none mb-4">
                             {game.title}
                         </h1>
 
-                        {game.description && (
-                            <p className="text-gray-400 text-lg mb-6 leading-relaxed max-w-2xl">
-                                {game.description}
-                            </p>
-                        )}
+                        <p className="text-gray-400 text-lg mb-6 leading-relaxed max-w-2xl">
+                            {game.description || "No hay descripción disponible para este título."}
+                        </p>
 
                         <div className="flex items-end gap-6 mb-8 border-b border-white/5 pb-8">
                             <div>
@@ -176,7 +183,8 @@ const GameDetail = () => {
 
                             {/* WATCH TRAILER BUTTON */}
                             {trailerId && (
-                                <button
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => setShowTrailer(true)}
                                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 group mb-2"
                                 >
@@ -184,7 +192,7 @@ const GameDetail = () => {
                                         <Play size={14} fill="white" />
                                     </div>
                                     <span className="font-medium text-sm">Ver Trailer</span>
-                                </button>
+                                </motion.button>
                             )}
                         </div>
 
@@ -192,7 +200,8 @@ const GameDetail = () => {
 
                         {/* Desktop Actions */}
                         <div className="hidden md:flex gap-4 mt-auto">
-                            <button
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
                                 onClick={handleAddToCart}
                                 disabled={!game.stock}
                                 className={`flex-1 py-4 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-3 ${!game.stock ? 'bg-gray-700 text-gray-500 cursor-not-allowed' :
@@ -200,7 +209,7 @@ const GameDetail = () => {
                                     }`}
                             >
                                 {isAdded ? <><Check /> Agregado</> : "Agregar al Carrito"}
-                            </button>
+                            </motion.button>
                         </div>
                     </motion.div>
                 </div>

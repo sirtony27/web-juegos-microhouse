@@ -521,5 +521,73 @@ export const useProductStore = create((set, get) => ({
             toast.error("Error en importación masiva");
             throw error;
         }
+    },
+
+    recalculatePrices: async () => {
+        const { fetchSettings, settings } = useSettingsStore.getState();
+        set({ loading: true });
+        try {
+            // 1. Ensure latest settings
+            await fetchSettings();
+            // 2. Get all products (fresh)
+            const querySnapshot = await getDocs(collection(db, "products"));
+            const allProducts = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+            const updates = [];
+
+            allProducts.forEach(product => {
+                const { basePrice, finalPrice } = calculateProductPrice(
+                    product.costPrice,
+                    product.customMargin,
+                    product.discountPercentage,
+                    settings, // Uses updated settings
+                    product.manualPrice
+                );
+
+                // Only update if changed
+                if (product.price !== finalPrice || product.basePrice !== basePrice) {
+                    updates.push({
+                        id: product.id,
+                        price: finalPrice,
+                        basePrice: basePrice
+                    });
+                }
+            });
+
+            if (updates.length === 0) {
+                toast.info("Precios ya actualizados.");
+                set({ loading: false });
+                return;
+            }
+
+            // 3. Batch Updates
+            const BATCH_SIZE = 450;
+            const chunks = [];
+            for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+                chunks.push(updates.slice(i, i + BATCH_SIZE));
+            }
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(db);
+                chunk.forEach(update => {
+                    const ref = doc(db, "products", update.id);
+                    batch.update(ref, {
+                        price: update.price,
+                        basePrice: update.basePrice
+                    });
+                });
+                await batch.commit();
+            }
+
+            // 4. Update local state
+            await get().fetchProducts();
+            toast.success(`Precios recalculados para ${updates.length} productos.`);
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Error recalculando precios globales");
+        } finally {
+            set({ loading: false });
+        }
     }
 }));

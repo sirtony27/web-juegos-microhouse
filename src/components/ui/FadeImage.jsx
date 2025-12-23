@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 
-const FadeImage = ({ src, alt, className = '' }) => {
+const FadeImage = ({ src, alt, className = '', ...props }) => {
     const [isLoaded, setIsLoaded] = useState(false);
 
     return (
-        <div className={`relative overflow-hidden ${className}`}>
+        <motion.div
+            className={`relative overflow-hidden ${className}`}
+            {...props}
+        >
             {!isLoaded && (
                 <div className="absolute inset-0 bg-brand-surface animate-pulse" />
             )}
@@ -15,7 +19,7 @@ const FadeImage = ({ src, alt, className = '' }) => {
                 onLoad={() => setIsLoaded(true)}
                 loading="lazy"
             />
-        </div>
+        </motion.div>
     );
 };
 

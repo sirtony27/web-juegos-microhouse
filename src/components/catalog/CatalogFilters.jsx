@@ -10,9 +10,13 @@ const CatalogFilters = ({
     activeConsole, setActiveConsole,
     activeGenre, setActiveGenre,
     onClear,
-    counts = {}
+    counts = {},
+    availableGenres = []
 }) => {
     const { consoles } = useConsoleStore();
+
+    // Use dynamic genres if available, otherwise fallback (or empty)
+    const displayGenres = availableGenres.length > 0 ? availableGenres : GENRES;
 
     // Custom Sort Order
     const sortOrder = [
@@ -109,7 +113,7 @@ const CatalogFilters = ({
                 >
                     Todos los géneros
                 </button>
-                {GENRES.map((genre) => (
+                {displayGenres.map((genre) => (
                     <button
                         key={genre}
                         onClick={() => setActiveGenre(genre === activeGenre ? null : genre)}

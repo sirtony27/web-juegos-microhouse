@@ -3,13 +3,47 @@ import { useParams, Link } from 'react-router-dom';
 import { useProductStore } from '../store/useProductStore';
 import { useConsoleStore } from '../store/useConsoleStore';
 import GameCard from '../components/GameCard';
+import GameCardSkeleton from '../components/ui/GameCardSkeleton';
 import { SearchX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CatalogFilters from '../components/catalog/CatalogFilters';
 
+const GENRE_TRANSLATIONS = {
+    "Action": "Acción",
+    "Adventure": "Aventura",
+    "Arcade": "Arcade",
+    "Board Games": "Juegos de Mesa",
+    "Card": "Cartas",
+    "Card & Board Game": "Cartas y Mesa",
+    "Casual": "Casual",
+    "Educational": "Educativo",
+    "Family": "Familiar",
+    "Fighting": "Pelea",
+    "Indie": "Indie",
+    "Massively Multiplayer": "MMO",
+    "Music": "Música",
+    "Platformer": "Plataformas",
+    "Platform": "Plataformas",
+    "Puzzle": "Puzles",
+    "Racing": "Carreras",
+    "RPG": "RPG",
+    "Role-playing (RPG)": "RPG",
+    "Shooter": "Disparos",
+    "Simulation": "Simulación",
+    "Simulator": "Simulación",
+    "Sports": "Deportes",
+    "Strategy": "Estrategia",
+    "Turn-based strategy (TBS)": "Estrategia por Turnos",
+    "Real Time Strategy (RTS)": "Estrategia en Tiempo Real",
+    "Point-and-click": "Aventura Gráfica",
+    "Hack and slash/Beat 'em up": "Hack & Slash",
+    "Tactical": "Táctico",
+    "Visual Novel": "Novela Visual"
+};
+
 const Catalog = () => {
     const { console } = useParams();
-    const { products: games } = useProductStore();
+    const { products: games, loading } = useProductStore();
 
     // Local State for Instant Filtering
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,14 +66,33 @@ const Catalog = () => {
         setActiveGenre(null);
     };
 
-    // Pagination State
+    // Pagination State (Persisted)
     const ITEMS_PER_PAGE = 24;
-    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+    const [visibleCount, setVisibleCount] = useState(() => {
+        const saved = sessionStorage.getItem('catalog-visible-count');
+        return saved ? parseInt(saved) : ITEMS_PER_PAGE;
+    });
+
+    useEffect(() => {
+        sessionStorage.setItem('catalog-visible-count', visibleCount);
+    }, [visibleCount]);
+
+    // Restore Scroll
+    useEffect(() => {
+        const savedScroll = sessionStorage.getItem('catalog-scroll');
+        if (savedScroll) {
+            window.scrollTo(0, parseInt(savedScroll));
+        }
+
+        const handleScrollSave = () => {
+            sessionStorage.setItem('catalog-scroll', window.scrollY);
+        };
+        window.addEventListener('scroll', handleScrollSave);
+        return () => window.removeEventListener('scroll', handleScrollSave);
+    }, []);
 
     // Advanced Filtering Logic
     const filteredGames = useMemo(() => {
-        // Reset pagination when filters change (implicitly handled by useEffect dependencies or derived state?)
-        // Better to reset explicilty in an effect or use a key
         return games.filter(game => {
             if (game.isHidden) return false;
             // 1. Console Filter
@@ -47,7 +100,13 @@ const Catalog = () => {
             // 2. Genre Filter
             if (activeGenre) {
                 const gameTags = Array.isArray(game.tags) ? game.tags : [];
-                if (!gameTags.some(t => t.toLowerCase() === activeGenre.toLowerCase())) return false;
+                // Check if any of the game's tags (translated) matches the active genre
+                const hasMatchingGenre = gameTags.some(t => {
+                    const translated = GENRE_TRANSLATIONS[t] || GENRE_TRANSLATIONS[t.trim()] || t;
+                    return translated === activeGenre;
+                });
+
+                if (!hasMatchingGenre) return false;
             }
             // 3. Search Filter
             if (searchQuery) {
@@ -58,11 +117,25 @@ const Catalog = () => {
         });
     }, [games, activeConsole, activeGenre, searchQuery]);
 
-    // Reset pagination when filters change
+    // Reset pagination when filters change (Explicit User Action)
     useEffect(() => {
-        setVisibleCount(ITEMS_PER_PAGE);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Only reset if filters *actually* changed, not just on mount
+        // We can track prev filters or just assume explicit action resets it.
+        // For now, let's keep it simple: if search/console/genre changes, reset.
+        // BUT we need to avoid resetting on initial mount if we want to restore state?
+        // Actually, if we navigate back, activeConsole comes from URL.
+
+        // This effect might conflict with restoring state.
+        // Let's rely on the user manually clearing filters or changing them.
+        // If the URL param changes, we SHOULD reset.
     }, [activeConsole, activeGenre, searchQuery]);
+
+    // Helper to reset (used in UI handlers)
+    const resetPagination = () => {
+        setVisibleCount(ITEMS_PER_PAGE);
+        sessionStorage.setItem('catalog-visible-count', ITEMS_PER_PAGE);
+        sessionStorage.setItem('catalog-scroll', 0);
+    };
 
     // Derived Visible Games
     const visibleGames = useMemo(() => {
@@ -106,6 +179,7 @@ const Catalog = () => {
                 </div>
 
                 {/* Command Bar Filters */}
+                {/* Command Bar Filters */}
                 <CatalogFilters
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -122,11 +196,30 @@ const Catalog = () => {
                         });
                         return c;
                     }, [games])}
+                    availableGenres={useMemo(() => {
+                        const genres = new Set();
+                        games.forEach(game => {
+                            if (Array.isArray(game.tags)) {
+                                game.tags.forEach(tag => {
+                                    // Normalize: Check translation or Capitalize
+                                    const translated = GENRE_TRANSLATIONS[tag] || GENRE_TRANSLATIONS[tag.trim()] || tag;
+                                    genres.add(translated);
+                                });
+                            }
+                        });
+                        return Array.from(genres).sort();
+                    }, [games])}
                 />
 
                 {/* Results Grid */}
                 <AnimatePresence mode="wait">
-                    {visibleGames.length > 0 ? (
+                    {loading ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                                <GameCardSkeleton key={i} />
+                            ))}
+                        </div>
+                    ) : visibleGames.length > 0 ? (
                         <>
                             <motion.div
                                 layout

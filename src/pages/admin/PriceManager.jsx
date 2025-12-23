@@ -100,20 +100,21 @@ const PriceManager = () => {
             // Recalculate price
             const calculated = calculateProductPrice(
                 p.costPrice,
-                newSettings.customMargin || settings.defaultMargin,
+                newSettings.customMargin || settings.globalMargin,
                 newSettings.discountPercentage || 0,
                 settings
             );
+
+            const changes = {};
+            if (newSettings.discountPercentage !== undefined) changes.discountPercentage = newSettings.discountPercentage;
+            if (newSettings.customMargin !== undefined) changes.customMargin = newSettings.customMargin;
 
             batchUpdates[p.id] = {
                 sku: p.sku,
                 title: p.title,
                 oldPrice: p.price,
                 newPrice: calculated.finalPrice,
-                changes: {
-                    discountPercentage: newSettings.discountPercentage,
-                    customMargin: newSettings.customMargin
-                }
+                changes: changes
             };
         });
 

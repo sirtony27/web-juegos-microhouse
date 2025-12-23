@@ -43,8 +43,8 @@ const Login = () => {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-dark focus:border-brand-dark outline-none transition-all"
-                            placeholder="••••••••"
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-brand-dark focus:border-brand-dark outline-none transition-all font-medium bg-white"
+                            placeholder="Ingrese su contraseña..."
                             autoFocus
                         />
                     </div>

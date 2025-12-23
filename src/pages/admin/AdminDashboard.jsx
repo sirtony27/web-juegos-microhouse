@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProductStore } from '../../store/useProductStore';
-import { useConfigStore } from '../../store/useConfigStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, DollarSign } from 'lucide-react';
@@ -11,8 +11,13 @@ import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const { products, toggleVisibility, deleteProduct, syncPricesFromSheet } = useProductStore();
-    const { defaultMargin } = useConfigStore();
+    const { settings, fetchSettings } = useSettingsStore();
+    const { globalMargin } = settings;
     const logout = useAuthStore((state) => state.logout);
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isSyncing, setIsSyncing] = useState(false);
@@ -140,7 +145,7 @@ const AdminDashboard = () => {
                                                 {product.customMargin ? (
                                                     <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">{product.customMargin}%</span>
                                                 ) : (
-                                                    <span className="text-gray-400 text-xs">{defaultMargin}% (Global)</span>
+                                                    <span className="text-gray-400 text-xs">{globalMargin}% (Global)</span>
                                                 )}
                                             </td>
                                             <td className="p-4 text-right font-bold text-brand-dark">
@@ -192,37 +197,43 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Right Column: Analytics Sidebar (Sticky) */}
-                <div className="lg:sticky lg:top-4 bg-gray-50/50 rounded-xl">
-                    <h3 className="text-lg font-bold text-gray-700 mb-4 px-2">Métricas en Tiempo Real</h3>
-                    <AnalyticsCharts />
+                <div className="lg:sticky lg:top-4 bg-gray-50/50 rounded-xl space-y-6">
 
-                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100 mb-6">
-                        <p className="text-xs text-blue-800">
-                            <strong>Tip:</strong> Revisa la "Intención de Compra" para saber qué stock reponer antes de que los clientes te lo pidan.
-                        </p>
+                    {/* Tools Links (Moved to Top) */}
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-700 mb-3 px-2">Acceso Rápido</h3>
+                        <div className="space-y-3">
+                            <Link to="/admin/audit" className="block bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="bg-blue-100 p-2 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <Search size={20} />
+                                    </div>
+                                    <h4 className="font-bold text-gray-800">Auditoría de Inventario</h4>
+                                </div>
+                                <p className="text-xs text-gray-500">Detecta faltantes y enriquece datos.</p>
+                            </Link>
+
+                            <Link to="/admin/pricing" className="block bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all group">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="bg-purple-100 p-2 rounded-lg text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                        <DollarSign size={20} />
+                                    </div>
+                                    <h4 className="font-bold text-gray-800">Gestor de Precios</h4>
+                                </div>
+                                <p className="text-xs text-gray-500">Edición masiva de márgenes y descuentos.</p>
+                            </Link>
+                        </div>
                     </div>
 
-                    {/* Tools Links */}
-                    <div className="space-y-4">
-                        <Link to="/admin/audit" className="block bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                    <Search size={20} />
-                                </div>
-                                <h4 className="font-bold text-gray-800">Auditoría de Inventario</h4>
-                            </div>
-                            <p className="text-sm text-gray-500">Detecta juegos faltantes comparando con el Excel.</p>
-                        </Link>
+                    <div className="pt-4 border-t border-gray-200">
+                        <h3 className="text-lg font-bold text-gray-700 mb-4 px-2">Métricas en Tiempo Real</h3>
+                        <AnalyticsCharts />
 
-                        <Link to="/admin/pricing" className="block bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="bg-purple-100 p-2 rounded-lg text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                                    <DollarSign size={20} />
-                                </div>
-                                <h4 className="font-bold text-gray-800">Gestor de Precios</h4>
-                            </div>
-                            <p className="text-sm text-gray-500">Edición masiva de precios, descuentos y márgenes.</p>
-                        </Link>
+                        <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100 mb-6">
+                            <p className="text-xs text-blue-800">
+                                <strong>Tip:</strong> Revisa la "Intención de Compra" para saber qué stock reponer antes de que los clientes te lo pidan.
+                            </p>
+                        </div>
                     </div>
                 </div>
 

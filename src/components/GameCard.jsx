@@ -106,12 +106,50 @@ const GameCard = ({ game }) => {
         setTimeout(() => setIsAdded(false), 1500);
     };
 
+    // Spotlight Effect Logic
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+    const [isHovered, setIsHovered] = useState(false);
+
+    const handleMouseMove = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setMousePosition({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+        });
+    };
+
     return (
-        <Link to={`/game/${game.slug || game.id}`} className="block h-full group">
+        <Link
+            to={`/game/${game.slug || game.id}`}
+            className="block h-full group"
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
             <motion.div
                 whileHover={{ y: -8, scale: 1.02 }}
                 className={`h-full flex flex-col bg-brand-surface border border-white/5 rounded-xl overflow-hidden shadow-lg transition-all duration-300 ${platformConfig.border} ${platformConfig.shadow} hover:shadow-2xl relative`}
             >
+                {/* Spotlight Overlay */}
+                <div
+                    className="pointer-events-none absolute -inset-px rounded-xl opacity-0 group-hover:opacity-100 transition duration-300 z-30"
+                    style={{
+                        background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.1), transparent 40%)`
+                    }}
+                />
+
+                {/* Additional Border Spotlight */}
+                <div
+                    className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300 z-30"
+                    style={{
+                        background: `radial-gradient(400px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.15), transparent 40%)`,
+                        maskImage: 'linear-gradient(black, black) content-box, linear-gradient(black, black)',
+                        maskComposite: 'exclude',
+                        WebkitMaskComposite: 'xor',
+                        padding: '1px' // This simulates the border width
+                    }}
+                />
+
                 {/* Image Area */}
                 <div className="relative w-full aspect-[3/4] bg-neutral-900 overflow-hidden">
                     {/* Platform Headstrip (Mimicking Box Art) */}
@@ -127,6 +165,7 @@ const GameCard = ({ game }) => {
                         src={game.image}
                         alt={game.title}
                         className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 mt-6 ${!game.stock ? 'opacity-40 grayscale' : ''}`}
+                        layoutId={`product-image-${game.id}`}
                     />
 
                     {/* Rating Badge (Metacritic Style) */}
@@ -155,7 +194,8 @@ const GameCard = ({ game }) => {
 
                     {/* Add Button */}
                     {game.stock && (
-                        <button
+                        <motion.button
+                            whileTap={{ scale: 0.9 }}
                             onClick={handleAddToCart}
                             className={clsx(
                                 "absolute bottom-3 right-3 p-3 rounded-full shadow-xl transition-all z-20 flex items-center justify-center border border-white/10 backdrop-blur-sm",
@@ -163,12 +203,12 @@ const GameCard = ({ game }) => {
                             )}
                         >
                             {isAdded ? <Check size={20} /> : <Plus size={20} />}
-                        </button>
+                        </motion.button>
                     )}
                 </div>
 
                 {/* Info Area */}
-                <div className="p-4 flex flex-col flex-grow relative">
+                <div className="p-4 flex flex-col flex-grow relative z-20"> {/* z-20 to sit above spotlight */}
                     <h3 className="font-display font-bold text-base text-white leading-tight line-clamp-2 min-h-[2.5rem] mb-2 group-hover:text-brand-red transition-colors">
                         {game.title}
                     </h3>
