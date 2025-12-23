@@ -6,6 +6,7 @@ import { useCartStore } from '../store/useCartStore'; // Fixing import path just
 import { clsx } from 'clsx';
 import { Link } from 'react-router-dom';
 import FadeImage from './ui/FadeImage';
+import { toast } from 'sonner';
 
 import { useConsoleStore } from '../store/useConsoleStore';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -104,6 +105,21 @@ const GameCard = ({ game }) => {
         trackAddToCart(game.id);
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 1500);
+
+        // Rich Toast Notification
+        toast.custom((t) => (
+            <div className="flex items-center gap-3 w-full bg-brand-surface border border-white/10 rounded-xl p-3 shadow-2xl backdrop-blur-md">
+                <div className="w-12 h-16 rounded overflow-hidden flex-shrink-0 bg-neutral-900 border border-white/10">
+                    <img src={game.image} alt={game.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-white font-bold text-sm truncate">{game.title}</span>
+                    <span className="text-green-400 text-xs flex items-center gap-1">
+                        <Check size={12} /> Agregado al carrito
+                    </span>
+                </div>
+            </div>
+        ), { duration: 2000 });
     };
 
     // Spotlight Effect Logic

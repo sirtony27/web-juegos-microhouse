@@ -5,7 +5,9 @@ import { useConsoleStore } from '../store/useConsoleStore';
 import { formatCurrency } from '../utils/formatCurrency';
 import { useCartStore } from '../store/useCartStore';
 import { Check, ArrowLeft, Plus, Play, X, Tag } from 'lucide-react';
+import GameCard from '../components/GameCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 import { useAnalytics } from '../hooks/useAnalytics';
 
@@ -81,6 +83,21 @@ const GameDetail = () => {
         trackAddToCart(game.id);
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 2000);
+
+        // Rich Toast Notification
+        toast.custom((t) => (
+            <div className="flex items-center gap-3 w-full bg-brand-surface border border-white/10 rounded-xl p-3 shadow-2xl backdrop-blur-md">
+                <div className="w-12 h-16 rounded overflow-hidden flex-shrink-0 bg-neutral-900 border border-white/10">
+                    <img src={game.image} alt={game.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-white font-bold text-sm truncate">{game.title}</span>
+                    <span className="text-green-400 text-xs flex items-center gap-1">
+                        <Check size={12} /> Agregado al carrito
+                    </span>
+                </div>
+            </div>
+        ), { duration: 2000 });
     };
 
     return (
@@ -232,6 +249,7 @@ const GameDetail = () => {
                 </div>
             </div>
 
+
             {/* TRAILER MODAL */}
             <AnimatePresence>
                 {showTrailer && trailerId && (
@@ -261,6 +279,29 @@ const GameDetail = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* SIMILAR GAMES SECTION */}
+            <div className="container mx-auto px-4 mt-16 md:mt-24 border-t border-white/5 pt-12">
+                <h2 className="text-2xl font-display font-bold text-white mb-6 flex items-center gap-2">
+                    <span className="w-1 h-8 bg-brand-red rounded-full block"></span>
+                    También te podría gustar
+                </h2>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    {useProductStore.getState().products
+                        .filter(p =>
+                            p.id !== game.id && !p.isHidden &&
+                            (p.tags && game.tags && p.tags.some(t => game.tags.includes(t)))
+                        )
+                        .sort(() => 0.5 - Math.random()) // Simple shuffle
+                        .slice(0, 4)
+                        .map(relatedGame => (
+                            <div key={relatedGame.id} className="h-full">
+                                <GameCard game={relatedGame} />
+                            </div>
+                        ))}
+                </div>
+            </div>
         </div>
     );
 };

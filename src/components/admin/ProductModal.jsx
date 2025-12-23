@@ -1,15 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Save, Image as ImageIcon } from 'lucide-react';
+import { X, Save, Image as ImageIcon, Search, Loader, Wand2, CheckCircle2 } from 'lucide-react';
 import { useProductStore } from '../../store/useProductStore';
 import { useConsoleStore } from '../../store/useConsoleStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { searchGame, getGameDetails } from '../../services/gameService';
 
 const GENRES = [
     "Acción", "Aventura", "RPG", "FPS (Shooter)",
     "Deportes", "Carreras", "Pelea", "Estrategia",
     "Terror", "Simulación", "Infantil", "Mundo Abierto"
 ];
+
+const GENRE_TRANSLATION = {
+    'Action': 'Acción',
+    'Adventure': 'Aventura',
+    'Role-playing (RPG)': 'RPG',
+    'Shooter': 'FPS (Shooter)',
+    'Sport': 'Deportes',
+    'Racing': 'Carreras',
+    'Fighting': 'Pelea',
+    'Strategy': 'Estrategia',
+    'Real Time Strategy (RTS)': 'Estrategia',
+    'Turn-based strategy (TBS)': 'Estrategia',
+    'Simulator': 'Simulación',
+    'Puzzle': 'Infantil', // Approximation
+    'Platform': 'Aventura',
+    'Hack and slash/Beat \'em up': 'Acción',
+    'Visual Novel': 'Aventura',
+    'Indie': 'Indie'
+};
 
 const ProductModal = ({ isOpen, onClose, productToEdit }) => {
     const { register, handleSubmit, reset, setValue, watch } = useForm();
@@ -57,6 +77,80 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
 
     // Watch tags to handle visual state if needed, though we manage selection locally for UI then sync to form
     const [selectedGenres, setSelectedGenres] = useState([]);
+
+    // Curation State
+    const [curationSearch, setCurationSearch] = useState('');
+    const [curationResults, setCurationResults] = useState([]);
+    const [isCurationLoading, setIsCurationLoading] = useState(false);
+    const [showCuration, setShowCuration] = useState(false);
+
+    const handleCurateSearch = async (e) => {
+        e.preventDefault();
+        if (!curationSearch.trim()) return;
+
+        setIsCurationLoading(true);
+        try {
+            const results = await searchGame(curationSearch);
+            setCurationResults(results || []);
+        } catch (error) {
+            console.error("Curation search error:", error);
+        } finally {
+            setIsCurationLoading(false);
+        }
+    };
+
+    const applyCuration = async (gameId) => {
+        setIsCurationLoading(true);
+        try {
+            const details = await getGameDetails(gameId);
+            if (details) {
+                // Apply Translation
+                const translatedGenres = (details.genres || []).map(g => GENRE_TRANSLATION[g] || g);
+
+                // Update Form
+                setValue('title', details.title || watch('title')); // Keep existing if empty? No, overwrite is the goal usually. Let's overwrite.
+                setValue('title', details.name); // igdb returns 'name'? getGameDetails uses 'name' in cached payload? check gameService.
+                // gameService getGameDetails returns: { description, website, rating, released, background_image, trailer, genres, platforms }
+                // Ah, it doesn't explicitly return 'name' in the final object, only in search.
+                // Wait, looking at gameService line 155: fields name... but line 184 finalData: doesn't include 'name' explicitly?
+                // Actually it maps `data.name` is unused? 
+                // Let's check gameService.js from previous turn view.
+                // Line 184: finalData = { description, website... } -> It MISSES 'title' or 'name' in the object properly! 
+                // Wait, searchGame returns 'name'. getGameDetails returns enriched data.
+                // I rely on search result for name? Or I should ask getGameDetails to return name too.
+                // Let's assume I fix getGameDetails or carry it over. 
+                // Actually, `details` object in `gameService.js` is mapped from `data`. 
+                // I should assume the user clicked a search result which HAS the name. 
+                // So I can use the name from the search result list item, OR I rely on `getGameDetails` providing it.
+                // Let's update `setValue('title')` using the search result item if possible, or fix `gameService`?
+                // I cannot fix `gameService` easily right now without another step.
+                // I will use the name from the selected item in the list passed to this function?
+                // No, I only passed gameId.
+                // I will find the name from `curationResults`.
+
+                const selectedResult = curationResults.find(r => r.id === gameId);
+                if (selectedResult) setValue('title', selectedResult.name);
+
+                setValue('description', details.description);
+                setValue('image', details.background_image);
+                setValue('trailerUrl', details.trailer);
+                setValue('rating', details.rating);
+
+                // Map Genres to our Pillars
+                // Filter genres that match our GENRES list strictly or loosely
+                const mappedTags = translatedGenres.filter(g => GENRES.includes(g));
+                setSelectedGenres(mappedTags);
+
+                setShowCuration(false);
+                setCurationResults([]);
+                setCurationSearch('');
+            }
+        } catch (error) {
+            console.error("Apply curation error:", error);
+        } finally {
+            setIsCurationLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -180,6 +274,72 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
 
                         {/* LEFT COLUMN: Visuals & Core Info */}
                         <div className="space-y-6">
+
+                            {/* CURATION MODULE */}
+                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="text-xs font-bold text-purple-700 uppercase flex items-center gap-2">
+                                        <Wand2 size={14} /> Curado de Metadatos
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCuration(!showCuration)}
+                                        className="text-xs text-purple-600 hover:text-purple-800 underline"
+                                    >
+                                        {showCuration ? 'Cerrar' : 'Buscar manual'}
+                                    </button>
+                                </div>
+
+                                {showCuration && (
+                                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={curationSearch}
+                                                onChange={(e) => setCurationSearch(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleCurateSearch(e)}
+                                                placeholder="Buscar juego en IGDB..."
+                                                className="flex-grow px-3 py-1.5 rounded-lg border border-purple-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleCurateSearch}
+                                                disabled={isCurationLoading}
+                                                className="px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                                            >
+                                                {isCurationLoading ? <Loader size={16} className="animate-spin" /> : <Search size={16} />}
+                                            </button>
+                                        </div>
+
+                                        {/* Results */}
+                                        {curationResults.length > 0 && (
+                                            <div className="max-h-60 overflow-y-auto custom-scrollbar bg-white rounded-lg border border-purple-100 shadow-sm divide-y divide-gray-50">
+                                                {curationResults.map(game => (
+                                                    <button
+                                                        key={game.id}
+                                                        type="button"
+                                                        onClick={() => applyCuration(game.id)}
+                                                        className="w-full text-left p-2 hover:bg-purple-50 flex gap-3 items-center transition-colors group"
+                                                    >
+                                                        <div className="w-10 h-14 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                                            {game.background_image ? (
+                                                                <img src={game.background_image} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon size={16} /></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-grow min-w-0">
+                                                            <div className="font-bold text-sm text-gray-800 group-hover:text-purple-700 truncate">{game.name}</div>
+                                                            <div className="text-xs text-gray-400">{game.released?.split('-')[0] || 'N/A'}</div>
+                                                        </div>
+                                                        <CheckCircle2 size={16} className="text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Image Preview & Title Section */}
                             <div className="flex gap-6 items-start">

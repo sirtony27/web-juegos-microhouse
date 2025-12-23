@@ -19,10 +19,8 @@ export const useCartStore = create(
                                 : item
                         ),
                     });
-                    toast.success('Cantidad actualizada', { description: game.title });
                 } else {
                     set({ cart: [...cart, { ...game, quantity: 1 }] });
-                    toast.success('Producto agregado', { description: game.title });
                 }
             },
 
