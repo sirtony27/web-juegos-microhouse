@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProductStore } from '../store/useProductStore';
+import { useConsoleStore } from '../store/useConsoleStore';
 import GameCard from '../components/GameCard';
 import { SearchX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -84,9 +85,12 @@ const Catalog = () => {
     }, [filteredGames.length]);
 
 
+    // Helper: Get Title
+    const { consoles } = useConsoleStore();
     const getTitle = () => {
         if (activeConsole !== 'all') {
-            return `Catálogo ${activeConsole.toUpperCase()}`;
+            const consoleObj = consoles.find(c => c.id === activeConsole);
+            return consoleObj ? `Catálogo ${consoleObj.name}` : 'Catálogo';
         }
         return 'Catálogo Completo';
     };
