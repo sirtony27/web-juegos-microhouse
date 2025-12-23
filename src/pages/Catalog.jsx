@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { useProductStore } from '../store/useProductStore';
 import { useConsoleStore } from '../store/useConsoleStore';
 import GameCard from '../components/GameCard';
@@ -42,28 +42,42 @@ const GENRE_TRANSLATIONS = {
 };
 
 const Catalog = () => {
-    const { console } = useParams();
+    const { console: consoleParam } = useParams();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { products: games, loading } = useProductStore();
 
-    // Local State for Instant Filtering
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeConsole, setActiveConsole] = useState('all');
-    const [activeGenre, setActiveGenre] = useState(null);
+    // Derived State from URL or Params
+    // Priority: Route Param > Search Param > 'all'
+    const activeConsole = consoleParam || 'all';
+    const activeGenre = searchParams.get('genre') || null;
+    const searchQuery = searchParams.get('search') || '';
 
-    // Initialize/Sync with URL param
-    useEffect(() => {
-        if (console) {
-            setActiveConsole(console);
-        } else {
-            setActiveConsole('all');
-        }
-    }, [console]);
+    // Setters that update URL
+    const setActiveConsole = (id) => {
+        // Since we use route param /catalog/:console, we must Navigate
+        if (id === 'all') navigate('/catalog/all'); // Or just /catalog if route exists
+        else navigate(`/catalog/${id}`);
+    };
+
+    const setActiveGenre = (genre) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (genre) newParams.set('genre', genre);
+        else newParams.delete('genre');
+        setSearchParams(newParams);
+    };
+
+    const setSearchQuery = (query) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (query) newParams.set('search', query);
+        else newParams.delete('search');
+        setSearchParams(newParams, { replace: true }); // Replace to avoid massive history stack
+    };
 
     // Handle Clear Filters
     const handleClearFilters = () => {
-        setSearchQuery('');
-        setActiveConsole('all');
-        setActiveGenre(null);
+        setSearchParams({});
+        if (activeConsole !== 'all') navigate('/catalog/all');
     };
 
     // Pagination State (Persisted)
@@ -91,12 +105,22 @@ const Catalog = () => {
         return () => window.removeEventListener('scroll', handleScrollSave);
     }, []);
 
-    // Advanced Filtering Logic
+    // Advanced Filtering Logic - Removed Debounce for Fluidity (assuming <2000 items is fast enough)
+    // If we really need debounce, we should only debounce the *filtering*, not the input state.
+    // But keeping it direct is usually best for "instant" feel unless dataset is huge.
     const filteredGames = useMemo(() => {
         return games.filter(game => {
             if (game.isHidden) return false;
+
             // 1. Console Filter
-            if (activeConsole !== 'all' && game.console !== activeConsole) return false;
+            if (activeConsole !== 'all') {
+                const gameConsoleId = (game.console || '').toLowerCase();
+                const targetConsoleId = activeConsole.toLowerCase();
+
+                // Flexible match: Exact ID match OR Name contains ID OR ID contains Name
+                if (gameConsoleId !== targetConsoleId) return false;
+            }
+
             // 2. Genre Filter
             if (activeGenre) {
                 const gameTags = Array.isArray(game.tags) ? game.tags : [];
@@ -108,6 +132,7 @@ const Catalog = () => {
 
                 if (!hasMatchingGenre) return false;
             }
+
             // 3. Search Filter
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
@@ -115,27 +140,15 @@ const Catalog = () => {
             }
             return true;
         });
-    }, [games, activeConsole, activeGenre, searchQuery]);
+    }, [games, activeConsole, activeGenre, searchQuery]); // Direct dependency on searchQuery
 
-    // Reset pagination when filters change (Explicit User Action)
+    // Reset pagination when filters change
     useEffect(() => {
-        // Only reset if filters *actually* changed, not just on mount
-        // We can track prev filters or just assume explicit action resets it.
-        // For now, let's keep it simple: if search/console/genre changes, reset.
-        // BUT we need to avoid resetting on initial mount if we want to restore state?
-        // Actually, if we navigate back, activeConsole comes from URL.
-
-        // This effect might conflict with restoring state.
-        // Let's rely on the user manually clearing filters or changing them.
-        // If the URL param changes, we SHOULD reset.
+        setVisibleCount(ITEMS_PER_PAGE);
     }, [activeConsole, activeGenre, searchQuery]);
 
     // Helper to reset (used in UI handlers)
-    const resetPagination = () => {
-        setVisibleCount(ITEMS_PER_PAGE);
-        sessionStorage.setItem('catalog-visible-count', ITEMS_PER_PAGE);
-        sessionStorage.setItem('catalog-scroll', 0);
-    };
+    // ... not really needed with Effect but kept for legacy ref
 
     // Derived Visible Games
     const visibleGames = useMemo(() => {
@@ -179,7 +192,6 @@ const Catalog = () => {
                 </div>
 
                 {/* Command Bar Filters */}
-                {/* Command Bar Filters */}
                 <CatalogFilters
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -211,68 +223,61 @@ const Catalog = () => {
                     }, [games])}
                 />
 
-                {/* Results Grid */}
-                <AnimatePresence mode="wait">
-                    {loading ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
-                            {Array.from({ length: 10 }).map((_, i) => (
-                                <GameCardSkeleton key={i} />
+                {/* Results Grid - REMOVED AnimatePresence heavily for fluidity */}
+                {/* Providing strictly necessary keys for performance */}
+                {loading ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                            <GameCardSkeleton key={i} />
+                        ))}
+                    </div>
+                ) : visibleGames.length > 0 ? (
+                    <>
+                        <div
+                            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6"
+                        >
+                            {visibleGames.map(game => (
+                                <motion.div
+                                    layout // Keep layout for smooth reshuffling
+                                    key={game.id}
+                                    initial={{ opacity: 0 }} // Simplified initial
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <GameCard game={game} />
+                                </motion.div>
                             ))}
                         </div>
-                    ) : visibleGames.length > 0 ? (
-                        <>
-                            <motion.div
-                                layout
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6"
-                            >
-                                {visibleGames.map(game => (
-                                    <motion.div
-                                        layout
-                                        key={game.id}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.9 }}
-                                        transition={{ duration: 0.2 }}
-                                    >
-                                        <GameCard game={game} />
-                                    </motion.div>
-                                ))}
-                            </motion.div>
 
-                            {/* Loading Indicator / End of List */}
-                            {visibleCount < filteredGames.length && (
-                                <div className="py-8 text-center text-gray-500 animate-pulse">
-                                    Cargando más juegos...
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        /* Empty State */
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex flex-col items-center justify-center py-20 text-center bg-brand-surface/30 rounded-3xl border border-white/5"
-                        >
-                            <div className="w-16 h-16 bg-brand-bg rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-xl">
-                                <SearchX className="text-gray-500" size={32} />
+                        {/* Loading Indicator / End of List */}
+                        {visibleCount < filteredGames.length && (
+                            <div className="py-8 text-center text-gray-500 animate-pulse">
+                                Cargando más juegos...
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-2">No encontramos juegos</h3>
-                            <p className="text-gray-400 max-w-md mx-auto mb-6">
-                                Intenta ajustar tus filtros o buscar con otros términos.
-                            </p>
-                            <button
-                                onClick={handleClearFilters}
-                                className="px-6 py-2 bg-brand-red text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-lg shadow-red-900/20"
-                            >
-                                Limpiar Filtros
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </>
+                ) : (
+                    /* Empty State - Simple Fade */
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center py-20 text-center bg-brand-surface/30 rounded-3xl border border-white/5"
+                    >
+                        <div className="w-16 h-16 bg-brand-bg rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-xl">
+                            <SearchX className="text-gray-500" size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No encontramos juegos</h3>
+                        <p className="text-gray-400 max-w-md mx-auto mb-6">
+                            Intenta ajustar tus filtros o buscar con otros términos.
+                        </p>
+                        <button
+                            onClick={handleClearFilters}
+                            className="px-6 py-2 bg-brand-red text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-lg shadow-red-900/20"
+                        >
+                            Limpiar Filtros
+                        </button>
+                    </motion.div>
+                )}
             </div>
         </div>
     );

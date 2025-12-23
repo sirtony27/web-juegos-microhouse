@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../../store/useSettingsStore'; // Changed from useConfigStore
 import { useProductStore } from '../../store/useProductStore';
 import ConsoleManager from '../../components/admin/ConsoleManager';
-import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings } from 'lucide-react';
+import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings, RefreshCw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
@@ -174,7 +174,7 @@ const AdminSettings = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-8 pt-6 border-t border-gray-100">
+                            <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col gap-4">
                                 <label className="flex items-center gap-4 cursor-pointer group">
                                     <div className="relative flex items-center">
                                         <input
@@ -191,6 +191,15 @@ const AdminSettings = () => {
                                         <span className="block text-xs text-gray-500">Sobrescribe configuraciones individuales de productos.</span>
                                     </div>
                                 </label>
+
+                                <button
+                                    type="button"
+                                    onClick={() => recalculatePrices()}
+                                    className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors mt-2 border border-gray-200"
+                                >
+                                    <RefreshCw size={18} />
+                                    Recalcular Catalog (Precios y URLs)
+                                </button>
                             </div>
                         </div>
 

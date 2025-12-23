@@ -57,7 +57,7 @@ function App() {
           <Route path="catalog/:console" element={<PageTransition><Catalog /></PageTransition>} />
           <Route path="cart" element={<PageTransition><Cart /></PageTransition>} />
           <Route path="contact" element={<PageTransition><Contact /></PageTransition>} />
-          <Route path="game/:slug" element={<PageTransition><GameDetail /></PageTransition>} />
+          <Route path="game/:console/:slug" element={<PageTransition><GameDetail /></PageTransition>} />
           <Route path="how-it-works" element={
             <PageTransition>
               <div className="container mx-auto p-8 text-center text-white">

@@ -12,15 +12,21 @@ import { toast } from 'sonner';
 import { useAnalytics } from '../hooks/useAnalytics';
 
 const GameDetail = () => {
-    const { slug } = useParams();
+    const { slug, console: consoleId } = useParams();
     const navigate = useNavigate();
     const addToCart = useCartStore((state) => state.addToCart);
     const { trackProductView, trackAddToCart } = useAnalytics();
 
     const { products, loading } = useProductStore();
 
-    // Find by slug (primary) or id (fallback for legacy/direct links types)
-    const game = products.find(g => g.slug === slug || g.id === slug);
+    // Find by slug and console (structured)
+    let game = products.find(g => (g.slug === slug || g.id === slug) && g.console === consoleId);
+
+    // Fallback: search just by slug if direct link or collision
+    if (!game) {
+        game = products.find(g => g.slug === slug || g.id === slug);
+    }
+
     const { consoles } = useConsoleStore();
 
     // Resolve Console Name (Case insensitive match)

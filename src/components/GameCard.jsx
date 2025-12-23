@@ -136,7 +136,7 @@ const GameCard = ({ game }) => {
 
     return (
         <Link
-            to={`/game/${game.slug || game.id}`}
+            to={`/game/${game.console}/${game.slug || game.id}`}
             className="block h-full group"
             onMouseMove={handleMouseMove}
             onMouseEnter={() => setIsHovered(true)}

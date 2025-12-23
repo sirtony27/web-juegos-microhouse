@@ -4,6 +4,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } fr
 import Papa from 'papaparse';
 import { useConfigStore } from './useConfigStore'; // Still used for sheetUrl? No, moved to Settings Store
 import { useSettingsStore } from './useSettingsStore'; // New Store
+import { useConsoleStore } from './useConsoleStore';
 import { toast } from 'sonner';
 import { calculateProductPrice } from '../utils/pricingUtils';
 
