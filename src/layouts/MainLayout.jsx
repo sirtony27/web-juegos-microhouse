@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import MobileBottomNav from '../components/MobileBottomNav';
 import { Outlet } from 'react-router-dom';
+import { Instagram, Facebook, Twitter } from 'lucide-react';
 
 const MainLayout = () => {
     return (
@@ -28,9 +29,20 @@ const MainLayout = () => {
 
             <MobileBottomNav />
 
-            <footer className="hidden md:block bg-black/20 backdrop-blur-md text-gray-500 py-8 text-center border-t border-white/5 mt-auto relative z-10">
-                <div className="container mx-auto">
-                    <p className="text-sm">© {new Date().getFullYear()} MicroHouse Games. Todos los derechos reservados.</p>
+            <footer className="hidden md:block bg-black/40 backdrop-blur-md text-gray-400 py-10 text-center border-t border-white/5 mt-auto relative z-10">
+                <div className="container mx-auto flex flex-col items-center gap-6">
+                    <div className="flex items-center gap-6">
+                        <a href="#" className="p-3 bg-white/5 rounded-full hover:bg-white/10 hover:text-brand-red transition-all group">
+                            <Instagram size={20} className="group-hover:scale-110 transition-transform" />
+                        </a>
+                        <a href="#" className="p-3 bg-white/5 rounded-full hover:bg-white/10 hover:text-blue-500 transition-all group">
+                            <Facebook size={20} className="group-hover:scale-110 transition-transform" />
+                        </a>
+                        <a href="#" className="p-3 bg-white/5 rounded-full hover:bg-white/10 hover:text-sky-400 transition-all group">
+                            <Twitter size={20} className="group-hover:scale-110 transition-transform" />
+                        </a>
+                    </div>
+                    <p className="text-sm opacity-60">© {new Date().getFullYear()} MicroHouse Games. Todos los derechos reservados.</p>
                 </div>
             </footer>
         </div>

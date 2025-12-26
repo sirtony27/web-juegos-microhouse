@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useConsoleStore } from '../../store/useConsoleStore';
@@ -14,6 +14,25 @@ const CatalogFilters = ({
     availableGenres = []
 }) => {
     const { consoles } = useConsoleStore();
+
+    // Local state for debounce
+    const [localSearch, setLocalSearch] = useState(searchQuery || '');
+
+    // Sync local state when prop changes (e.g. URL change or Clear button in parent)
+    useEffect(() => {
+        setLocalSearch(searchQuery || '');
+    }, [searchQuery]);
+
+    // Debounce effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearch !== searchQuery) {
+                setSearchQuery(localSearch);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [localSearch, setSearchQuery, searchQuery]);
 
     // Use dynamic genres if available, otherwise fallback (or empty)
     const displayGenres = availableGenres.length > 0 ? availableGenres : GENRES;
@@ -61,19 +80,22 @@ const CatalogFilters = ({
             {/* Top Row: Search & Console Tabs */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center border-b border-white/5 pb-4 mb-4">
 
-                {/* Search Input */}
+                {/* Search Input - With Debounce */}
                 <div className="relative w-full md:w-64 group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-red transition-colors" size={18} />
                     <input
                         type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        value={localSearch}
+                        onChange={(e) => setLocalSearch(e.target.value)}
                         placeholder="Buscar juego..."
                         className="w-full bg-brand-bg/50 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-red transition-all"
                     />
-                    {searchQuery && (
+                    {localSearch && (
                         <button
-                            onClick={() => setSearchQuery('')}
+                            onClick={() => {
+                                setLocalSearch('');
+                                setSearchQuery(''); // Immediate clear
+                            }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
                         >
                             <X size={14} />

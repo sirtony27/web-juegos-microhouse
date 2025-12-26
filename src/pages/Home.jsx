@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Gamepad2, Disc, Play, MapPin, MousePointerClick, Truck, Package, HelpCircle } from 'lucide-react';
 import { useConsoleStore } from '../store/useConsoleStore';
+import { Helmet } from 'react-helmet-async'; // Import Helmet
 
 const Home = () => {
     // Stagger Text Animation Constants
@@ -44,6 +45,10 @@ const Home = () => {
 
     return (
         <div className="min-h-screen pt-4 md:pt-12">
+            <Helmet>
+                <title>MicroHouse Games | Juegos Físicos a Pedido en Bahía Blanca</title>
+                <meta name="description" content="Encargá tus juegos físicos de PS4, PS5 y Switch en Bahía Blanca. Catálogo completo, precios claros y entrega rápida." />
+            </Helmet>
             {/* BACKGROUND DECORATION */}
             <div className="absolute inset-0 bg-grid-white/[0.04] pointer-events-none" />
 

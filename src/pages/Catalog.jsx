@@ -7,6 +7,7 @@ import GameCardSkeleton from '../components/ui/GameCardSkeleton';
 import { SearchX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CatalogFilters from '../components/catalog/CatalogFilters';
+import { Helmet } from 'react-helmet-async';
 
 const GENRE_TRANSLATIONS = {
     "Action": "Acción",
@@ -183,6 +184,10 @@ const Catalog = () => {
 
     return (
         <div className="min-h-screen bg-brand-bg pb-20 pt-4 md:pt-12">
+            <Helmet>
+                <title>{getTitle()} | MicroHouse Games</title>
+                <meta name="description" content={`Explorá nuestro catálogo de juegos para ${activeConsole === 'all' ? 'todas las consolas' : activeConsole}. Encontrá tu próxima aventura.`} />
+            </Helmet>
             <div className="container mx-auto px-4">
 
                 {/* Header Title */}
@@ -223,8 +228,7 @@ const Catalog = () => {
                     }, [games])}
                 />
 
-                {/* Results Grid - REMOVED AnimatePresence heavily for fluidity */}
-                {/* Providing strictly necessary keys for performance */}
+                {/* Results Grid - With AnimatePresence for Filtering */}
                 {loading ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
                         {Array.from({ length: 10 }).map((_, i) => (
@@ -233,21 +237,25 @@ const Catalog = () => {
                     </div>
                 ) : visibleGames.length > 0 ? (
                     <>
-                        <div
+                        <motion.div
+                            layout
                             className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6"
                         >
-                            {visibleGames.map(game => (
-                                <motion.div
-                                    layout // Keep layout for smooth reshuffling
-                                    key={game.id}
-                                    initial={{ opacity: 0 }} // Simplified initial
-                                    animate={{ opacity: 1 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <GameCard game={game} />
-                                </motion.div>
-                            ))}
-                        </div>
+                            <AnimatePresence mode='popLayout'>
+                                {visibleGames.map(game => (
+                                    <motion.div
+                                        layout
+                                        key={game.id}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        <GameCard game={game} />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </motion.div>
 
                         {/* Loading Indicator / End of List */}
                         {visibleCount < filteredGames.length && (

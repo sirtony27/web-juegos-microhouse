@@ -13,11 +13,21 @@ const Cart = () => {
 
     const handleWhatsAppClick = () => {
         const phoneNumber = "5492915764388";
-        let message = "Hola MicroHouse! Quiero encargar los siguientes juegos:\n\n";
+
+        // Header
+        let message = "¡Hola MicroHouse! Me gustaría encargar el siguiente pedido web:\n\n";
+
+        // Items
         cart.forEach(item => {
-            message += `- ${item.title} x${item.quantity} (${formatCurrency(item.price * item.quantity)})\n`;
+            const consoleName = consoles.find(c => c.id === item.console)?.name || item.console || 'Juego';
+            message += `- *${item.title}* (${consoleName})\n`;
+            message += `  Cant: ${item.quantity} x ${formatCurrency(item.price)}\n`;
         });
-        message += `\n*Total: ${formatCurrency(totalPrice)}*`;
+
+        // Footer & Total
+        message += `\n*Total Final: ${formatCurrency(totalPrice)}*`;
+        message += `\n\nQuedo a la espera para coordinar el pago y envío. ¡Gracias!`;
+
         const encodedMessage = encodeURIComponent(message);
         window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
     };

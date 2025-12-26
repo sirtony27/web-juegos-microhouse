@@ -50,42 +50,44 @@ function App() {
       <ScrollToTop />
       <Toaster richColors theme="dark" position="top-center" />
 
-      <Routes>
-        {/* Public Views */}
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<PageTransition><Home /></PageTransition>} />
-          <Route path="catalog/:console" element={<PageTransition><Catalog /></PageTransition>} />
-          <Route path="cart" element={<PageTransition><Cart /></PageTransition>} />
-          <Route path="contact" element={<PageTransition><Contact /></PageTransition>} />
-          <Route path="game/:console/:slug" element={<PageTransition><GameDetail /></PageTransition>} />
-          <Route path="how-it-works" element={
-            <PageTransition>
-              <div className="container mx-auto p-8 text-center text-white">
-                <h1 className="text-2xl font-bold mb-4">¿Cómo funciona?</h1>
-                <p className="text-gray-400">El proceso es simple: Elegís los juegos que querés, nos enviás el pedido por WhatsApp y nosotros coordinamos el pago y la entrega.</p>
-              </div>
-            </PageTransition>
-          } />
-          {/* 404 Catch-all */}
-          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-        </Route>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {/* Public Views */}
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<PageTransition><Home /></PageTransition>} />
+            <Route path="catalog/:console" element={<Catalog />} />
+            <Route path="cart" element={<PageTransition><Cart /></PageTransition>} />
+            <Route path="contact" element={<PageTransition><Contact /></PageTransition>} />
+            <Route path="game/:console/:slug" element={<GameDetail />} />
+            <Route path="how-it-works" element={
+              <PageTransition>
+                <div className="container mx-auto p-8 text-center text-white">
+                  <h1 className="text-2xl font-bold mb-4">¿Cómo funciona?</h1>
+                  <p className="text-gray-400">El proceso es simple: Elegís los juegos que querés, nos enviás el pedido por WhatsApp y nosotros coordinamos el pago y la entrega.</p>
+                </div>
+              </PageTransition>
+            } />
+            {/* 404 Catch-all */}
+            <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+          </Route>
 
-        {/* Admin Login (Standalone) */}
-        <Route path="/admin/login" element={<Login />} />
+          {/* Admin Login (Standalone) */}
+          <Route path="/admin/login" element={<Login />} />
 
-        {/* Admin Protected Views (Restricted Layout) - No animations for admin to keep it snappy */}
-        <Route path="/admin" element={
-          <RequireAuth>
-            <AdminLayout />
-          </RequireAuth>
-        }>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="audit" element={<AuditInventory />} />
-          <Route path="pricing" element={<PriceManager />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>
-      </Routes>
+          {/* Admin Protected Views (Restricted Layout) - No animations for admin to keep it snappy */}
+          <Route path="/admin" element={
+            <RequireAuth>
+              <AdminLayout />
+            </RequireAuth>
+          }>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="audit" element={<AuditInventory />} />
+            <Route path="pricing" element={<PriceManager />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+        </Routes>
+      </AnimatePresence>
     </>
   );
 }

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 import { useAnalytics } from '../hooks/useAnalytics';
+import { Helmet } from 'react-helmet-async';
 
 const GameDetail = () => {
     const { slug, console: consoleId } = useParams();
@@ -108,6 +109,15 @@ const GameDetail = () => {
 
     return (
         <div className="bg-brand-bg min-h-screen text-gray-100 pb-32 md:pb-12 font-sans">
+            <Helmet>
+                <title>{game.title} | MicroHouse Games</title>
+                <meta name="description" content={`Comprá ${game.title} para ${consoleName} en MicroHouse Games. ${game.description ? game.description.substring(0, 150) + '...' : ''}`} />
+                <meta property="og:title" content={`${game.title} - ${consoleName}`} />
+                <meta property="og:description" content={game.description || `Conseguí ${game.title} al mejor precio en MicroHouse.`} />
+                <meta property="og:image" content={game.image} />
+                <meta property="og:type" content="product" />
+            </Helmet>
+
             {/* Background Atmosphere */}
             <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-surface via-brand-bg to-black pointer-events-none z-0" />
 
@@ -287,6 +297,7 @@ const GameDetail = () => {
             </AnimatePresence>
 
             {/* SIMILAR GAMES SECTION */}
+            {/* SIMILAR GAMES SECTION */}
             <div className="container mx-auto px-4 mt-16 md:mt-24 border-t border-white/5 pt-12">
                 <h2 className="text-2xl font-display font-bold text-white mb-6 flex items-center gap-2">
                     <span className="w-1 h-8 bg-brand-red rounded-full block"></span>
@@ -295,11 +306,21 @@ const GameDetail = () => {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                     {useProductStore.getState().products
-                        .filter(p =>
-                            p.id !== game.id && !p.isHidden &&
-                            (p.tags && game.tags && p.tags.some(t => game.tags.includes(t)))
-                        )
-                        .sort(() => 0.5 - Math.random()) // Simple shuffle
+                        .filter(p => p.id !== game.id && !p.isHidden)
+                        .map(p => {
+                            // Scoring System for Relevance
+                            let score = 0;
+                            // 1. Same Console (High priority)
+                            if (p.console === game.console) score += 10;
+                            // 2. Shared Tags (Medium priority)
+                            if (p.tags && game.tags) {
+                                const shared = p.tags.filter(t => game.tags.includes(t));
+                                score += shared.length * 2;
+                            }
+                            return { ...p, score };
+                        })
+                        .filter(p => p.score > 0) // Only show relevant games
+                        .sort((a, b) => b.score - a.score) // Sort by relevance
                         .slice(0, 4)
                         .map(relatedGame => (
                             <div key={relatedGame.id} className="h-full">
