@@ -593,7 +593,8 @@ export const useProductStore = create((set, get) => ({
                     product.customMargin,
                     product.discountPercentage,
                     settings, // Uses updated settings
-                    product.manualPrice
+                    product.manualPrice,
+                    product.currency || 'ARS'
                 );
 
                 // Only update if changed
