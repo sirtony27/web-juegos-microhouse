@@ -374,9 +374,8 @@ const AuditInventory = () => {
         let matchesConsole = false;
         if (selectedConsoleFilter === 'ALL') matchesConsole = true;
         else {
-            const sku = item.sku.toUpperCase();
-            if (selectedConsoleFilter === 'PS') matchesConsole = sku.startsWith('PS');
-            if (selectedConsoleFilter === 'NSW') matchesConsole = sku.startsWith('NSW') || sku.startsWith('SW2');
+            if (selectedConsoleFilter === 'PS') matchesConsole = item.console === 'ps5' || item.console === 'ps4';
+            if (selectedConsoleFilter === 'NSW') matchesConsole = item.console === 'nsw';
         }
 
         // 2. Search Filter
