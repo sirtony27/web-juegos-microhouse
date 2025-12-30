@@ -371,18 +371,18 @@ const AuditInventory = () => {
     const handleModalClose = () => {
         setIsModalOpen(false);
         setItemToCreate(null);
-        if (itemToCreate) {
-            // Optimistic remove? Or verification required?
-            // Usually we want to remove it from "Missing" once added.
-            // But we don't know for sure if it was saved unless we pass a callback to Modal.
-            // For now, let's assume if modal closed and user "Saved" inside, we might need a refresh.
-            // Actually ProductModal handles saving. We can refresh the missing list or remove it.
-            // Let's just strip it from local list to avoid duplicates visually.
-            // CAUTION: If user cancelled, we shouldn't remove it. 
-            // We need ProductModal to tell us if saved. 
-            // For now, don't remove, let user click "Rescan" to be sure.
-            // Or better: ProductModal has no "onSuccess" prop currently visible in usage.
-        }
+    };
+
+    const handleProductCreationSuccess = (createdProduct) => {
+        if (!createdProduct || !createdProduct.sku) return;
+
+        toast.success(`Producto "${createdProduct.title}" creado y removido de la lista.`);
+
+        setMissingProducts(prev => {
+            if (!prev) return prev;
+            // Remove item from list if SKU matches
+            return prev.filter(item => item.sku !== createdProduct.sku);
+        });
     };
 
     // Filter Logic
@@ -628,6 +628,7 @@ const AuditInventory = () => {
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
                 productToEdit={itemToCreate}
+                onSuccess={handleProductCreationSuccess}
             />
         </div>
     );

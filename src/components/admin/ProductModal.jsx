@@ -31,7 +31,7 @@ const GENRE_TRANSLATION = {
     'Indie': 'Indie'
 };
 
-const ProductModal = ({ isOpen, onClose, productToEdit }) => {
+const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
     const { register, handleSubmit, reset, setValue, watch, getValues } = useForm();
     const { settings } = useSettingsStore();
     // Watch values for live preview
@@ -247,7 +247,7 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
         return (match && match[2].length === 11) ? match[2] : '';
     };
 
-    const onSubmit = (data) => {
+    const onSubmit = async (data) => {
         // Process Data
         const processed = {
             ...data,
@@ -266,10 +266,12 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
         };
 
         if (productToEdit?.id) {
-            updateProduct(productToEdit.id, processed);
+            await updateProduct(productToEdit.id, processed);
         } else {
-            addProduct({ ...processed, id: Date.now().toString() });
+            await addProduct({ ...processed, id: Date.now().toString() });
         }
+
+        if (onSuccess) onSuccess(processed);
         onClose();
     };
 
