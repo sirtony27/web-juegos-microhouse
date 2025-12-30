@@ -527,7 +527,21 @@ const AuditInventory = () => {
                                 {filteredItems.map((item, index) => (
                                     <tr key={index} className="hover:bg-blue-50/30 transition-colors group">
                                         <td className="p-4 font-mono text-xs font-bold text-gray-500">{item.sku}</td>
-                                        <td className="p-4 text-xs font-bold text-gray-400 uppercase">{item.categoryRaw || item.console || '-'}</td>
+                                        <td className="p-4 text-xs font-bold text-gray-400 uppercase">
+                                            {/* Show mapped console name if possible, else raw */}
+                                            {detectConsoleId(item.sku) ? (
+                                                <span className={`px-2 py-1 rounded-md text-white text-[10px] ${detectConsoleId(item.sku) === 'ps5' ? 'bg-blue-600' :
+                                                    detectConsoleId(item.sku) === 'ps4' ? 'bg-blue-400' :
+                                                        detectConsoleId(item.sku) === 'nsw' ? 'bg-red-500' : 'bg-gray-400'
+                                                    }`}>
+                                                    {detectConsoleId(item.sku) === 'ps5' ? 'PS5' :
+                                                        detectConsoleId(item.sku) === 'ps4' ? 'PS4' :
+                                                            detectConsoleId(item.sku) === 'nsw' ? 'SWITCH' : item.categoryRaw}
+                                                </span>
+                                            ) : (
+                                                item.categoryRaw || '-'
+                                            )}
+                                        </td>
                                         <td className="p-4 font-medium text-gray-800">{formatTitle(item.name)}</td>
                                         <td className="p-4">
                                             {item._suggestedData ? (
@@ -542,7 +556,7 @@ const AuditInventory = () => {
                                                 <span className="text-xs text-gray-400 italic">Pendiente</span>
                                             )}
                                         </td>
-                                        <td className="p-4 text-right font-mono text-gray-600">${item.price}</td>
+                                        <td className="p-4 text-right font-mono text-gray-600">{item.price}</td>
                                         <td className="p-4 text-center">
                                             <button
                                                 onClick={() => handleAdd(item)}

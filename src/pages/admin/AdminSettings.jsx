@@ -39,7 +39,9 @@ const AdminSettings = () => {
                 rawgApiKey: settings.rawgApiKey || '',
                 youtubeApiKey: settings.youtubeApiKey || '',
                 igdbClientId: settings.igdbClientId || '',
-                igdbClientSecret: settings.igdbClientSecret || ''
+                igdbClientSecret: settings.igdbClientSecret || '',
+                exchangeRate: settings.exchangeRate || 1200,
+                autoExchangeRate: settings.autoExchangeRate || false
             });
         }
     }, [settings]);
@@ -109,7 +111,9 @@ const AdminSettings = () => {
             rawgApiKey: formData.rawgApiKey,
             youtubeApiKey: formData.youtubeApiKey,
             igdbClientId: formData.igdbClientId,
-            igdbClientSecret: formData.igdbClientSecret
+            igdbClientSecret: formData.igdbClientSecret,
+            exchangeRate: formData.exchangeRate,
+            autoExchangeRate: formData.autoExchangeRate
         });
 
         // Auto recalculate prices when global config changes
@@ -185,6 +189,84 @@ const AdminSettings = () => {
                                             className="form-input text-lg font-bold"
                                         />
                                         <span className="absolute right-4 top-3 text-gray-400 font-bold">%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dollar Exchange Logic */}
+                            <div className="mt-6 pt-6 border-t border-gray-100">
+                                <label className="block text-sm font-bold text-green-700 mb-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        Cotización Dólar (USD)
+                                        <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Base de Costo</span>
+                                    </div>
+
+                                    {/* Auto-Update Toggle */}
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs font-semibold ${formData.autoExchangeRate ? 'text-blue-600' : 'text-gray-400'}`}>
+                                            Sync Automática (Dólar Blue)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                const newValue = !formData.autoExchangeRate;
+                                                setFormData(prev => ({ ...prev, autoExchangeRate: newValue }));
+
+                                                if (newValue) {
+                                                    // Trigger Auto-Fetch immediately
+                                                    try {
+                                                        const res = await fetch('https://dolarapi.com/v1/dolares/blue');
+                                                        const data = await res.json();
+                                                        if (data && data.venta) {
+                                                            setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeRate: true }));
+                                                            toast.success(`Cotización actualizada: $${data.venta} (DolarAPI)`);
+                                                        }
+                                                    } catch (error) {
+                                                        toast.error("Error al obtener cotización automática");
+                                                        console.error(error);
+                                                    }
+                                                }
+                                            }}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.autoExchangeRate ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                        >
+                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoExchangeRate ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+                                </label>
+
+                                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                                    <div className="relative w-full md:w-1/3">
+                                        <input
+                                            type="number"
+                                            name="exchangeRate"
+                                            value={formData.exchangeRate}
+                                            onChange={handleChange}
+                                            disabled={formData.autoExchangeRate} // Disable manual input if auto is on
+                                            className={`w-full p-3 pl-12 border rounded-xl outline-none transition-all font-mono text-xl ${formData.autoExchangeRate
+                                                ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed'
+                                                : 'bg-white text-green-800 border-green-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 font-bold'}`}
+                                            placeholder="1200"
+                                        />
+                                        <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold text-lg ${formData.autoExchangeRate ? 'text-gray-400' : 'text-green-600'}`}>$</span>
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">ARS</span>
+                                    </div>
+
+                                    <div className="flex-1">
+                                        {formData.autoExchangeRate ? (
+                                            <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
+                                                <RefreshCw size={14} className="animate-spin-slow" />
+                                                <span>Sincronizando con <strong>DolarAPI.com</strong> (Venta Blue)</span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-500 leading-relaxed">
+                                                Ingresá el valor manualmente. Se usará para convertir los precios de la lista (USD) a pesos.
+                                            </p>
+                                        )}
+                                        {settings.lastExchangeUpdate && (
+                                            <p className="text-[10px] text-gray-400 mt-1">
+                                                Última act: {new Date(settings.lastExchangeUpdate).toLocaleString()}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </div>

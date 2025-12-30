@@ -8,7 +8,10 @@ export const useSettingsStore = create((set) => ({
         globalMargin: 30, // Default
         vatRate: 21,    // Default
         sheetUrl: '',
-        enableVatGlobal: false
+        enableVatGlobal: false,
+        exchangeRate: 1200, // Default manual rate
+        autoExchangeRate: false,
+        lastExchangeUpdate: null
     },
     loading: false,
 
@@ -26,7 +29,10 @@ export const useSettingsStore = create((set) => ({
                     globalMargin: 30,
                     vatRate: 21,
                     sheetUrl: '',
-                    enableVatGlobal: false
+                    enableVatGlobal: false,
+                    exchangeRate: 1200,
+                    autoExchangeRate: false,
+                    lastExchangeUpdate: null
                 };
                 await setDoc(docRef, defaultSettings);
                 set({ settings: defaultSettings, loading: false });

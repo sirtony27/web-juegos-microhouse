@@ -318,12 +318,18 @@ export const useProductStore = create((set, get) => ({
         await useSettingsStore.getState().fetchSettings();
 
         const { settings } = useSettingsStore.getState();
-        const { sheetUrl, globalMargin, vatRate, enableVatGlobal } = settings;
+        console.log("Checking syncPricesFromSheet exchangeRate:", settings.exchangeRate);
+        const { sheetUrl, globalMargin, vatRate, enableVatGlobal, exchangeRate } = settings;
 
         if (!sheetUrl) {
             toast.error("Falta URL. Ve a Configuración.");
             throw new Error("No hay URL de Google Sheets configurada. Ve a Configuración y guarda la URL.");
         }
+
+        // Default rate to 1 if missing/invalid to prevent NaN
+        const validExchangeRate = (exchangeRate && !isNaN(exchangeRate) && exchangeRate > 0) ? parseFloat(exchangeRate) : 1;
+        // Log for debugging
+        if (validExchangeRate === 1) console.warn("Exchange Rate is 1 (Default). USD conversion might be disabled or unconfigured.");
 
         try {
             const response = await fetch(sheetUrl);
@@ -370,13 +376,15 @@ export const useProductStore = create((set, get) => ({
 
                             // Process Match
                             if (matchedRow) {
-                                // Cleaning: Index 3 = Cost (Col D)
+                                // Cleaning: Index 3 = Cost (Col D) [ASSUMED USD IN SHEET]
                                 const rawPrice = matchedRow[3] ? matchedRow[3].toString() : '';
                                 const cleanPrice = rawPrice.replace(/[$. ]/g, '').replace(',', '.').trim();
-                                const csvPrice = parseFloat(cleanPrice);
+                                const csvPriceUSD = parseFloat(cleanPrice);
 
-                                if (!isNaN(csvPrice) && csvPrice > 0) {
-                                    newCost = csvPrice;
+                                if (!isNaN(csvPriceUSD) && csvPriceUSD > 0) {
+                                    // CONVERT USD -> ARS
+                                    newCost = csvPriceUSD * validExchangeRate;
+
                                     updatedByEan++;
 
                                     // CALCULATE FINAL PRICE
@@ -484,8 +492,10 @@ export const useProductStore = create((set, get) => ({
     bulkImportProducts: async (productsToImport, onProgress) => {
         try {
             const { settings } = useSettingsStore.getState();
-            const { globalMargin, enableVatGlobal, vatRate } = settings;
+            const { globalMargin, enableVatGlobal, vatRate, exchangeRate } = settings;
             const collectionRef = collection(db, "products");
+
+            const validExchangeRate = (exchangeRate && !isNaN(exchangeRate) && exchangeRate > 0) ? parseFloat(exchangeRate) : 1;
 
             let count = 0;
             const total = productsToImport.length;
@@ -503,10 +513,18 @@ export const useProductStore = create((set, get) => ({
                 chunk.forEach(product => {
                     const docRef = doc(collectionRef);
 
+                    // 0. Convert Supplier Price (USD) to Cost (ARS)
+                    // product.costPrice comes from AuditInventory.jsx.
+                    // IMPORTANT: AuditInventory usually passes the RAW sheet price (USD).
+                    // So we must convert it here OR in AuditInventory. 
+                    // Let's do it here for consistency with "Sync".
+                    const costInUSD = parseFloat(product.costPrice) || 0;
+                    const costInARS = costInUSD * validExchangeRate;
+
                     // 1. Calculate Price
                     const margin = product.customMargin || globalMargin;
                     const { basePrice, finalPrice } = calculateProductPrice(
-                        product.costPrice,
+                        costInARS,
                         margin,
                         product.discountPercentage || 0,
                         settings,
@@ -521,7 +539,7 @@ export const useProductStore = create((set, get) => ({
                         title: product.title,
                         supplierName: product.supplierName || product.title,
                         sku: product.sku || '',
-                        costPrice: parseFloat(product.costPrice) || 0,
+                        costPrice: costInARS, // Store in ARS
                         price: finalPrice,
                         basePrice: basePrice,
                         manualPrice: product.manualPrice || '',
