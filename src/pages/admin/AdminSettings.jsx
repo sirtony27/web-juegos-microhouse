@@ -183,230 +183,257 @@ const AdminSettings = () => {
                     {/* LEFT COLUMN: Business Settings (Active/Unlocked) */}
                     <div className="lg:col-span-8 space-y-8">
 
-                        {/* Pricing Logic */}
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                            <h2 className="text-xl font-bold text-brand-dark mb-6 flex items-center gap-2">
-                                <span className="bg-green-100 p-2 rounded-lg text-green-700"><Globe size={20} /></span>
-                                Lógica de Precios
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
-                                        Margen de Ganancia Global (%)
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            name="defaultMargin"
-                                            value={formData.defaultMargin}
-                                            onChange={handleChange}
-                                            className="form-input text-lg font-bold"
-                                        />
-                                        <span className="absolute right-4 top-3 text-gray-400 font-bold">%</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-2">Margen base aplicado a productos sin configuración manual.</p>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">
-                                        Tasa de IVA / Impuestos (%)
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            name="vatRate"
-                                            value={formData.vatRate}
-                                            onChange={handleChange}
-                                            className="form-input text-lg font-bold"
-                                        />
-                                        <span className="absolute right-4 top-3 text-gray-400 font-bold">%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Dollar Exchange Logic */}
-                            <div className="mt-6 pt-6 border-t border-gray-100">
-                                <label className="block text-sm font-bold text-green-700 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-2">
-                                        Cotización Dólar (USD)
-                                        <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Base de Costo</span>
-                                    </div>
-
-                                    {/* Auto-Update Toggle & Source Selector */}
-                                    <div className="flex items-center gap-4">
-                                        {formData.autoExchangeRate && (
-                                            <select
-                                                name="autoExchangeSource"
-                                                value={formData.autoExchangeSource}
-                                                onChange={async (e) => {
-                                                    const newSource = e.target.value;
-                                                    setFormData(prev => ({ ...prev, autoExchangeSource: newSource }));
-
-                                                    // Trigger Fetch for new source
-                                                    try {
-                                                        toast.message(`Sincronizando Dólar ${newSource}...`);
-                                                        const res = await fetch(`https://dolarapi.com/v1/dolares/${newSource}`);
-                                                        const data = await res.json();
-                                                        if (data && data.venta) {
-                                                            setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeSource: newSource }));
-                                                            toast.success(`Dólar ${newSource} actualizado: $${data.venta}`);
-                                                        }
-                                                    } catch (error) {
-                                                        toast.error("Error al obtener cotización");
-                                                    }
-                                                }}
-                                                className="text-xs font-bold text-blue-700 bg-blue-50 border-blue-200 rounded-lg py-1 px-2 focus:ring-2 focus:ring-blue-500/50 outline-none uppercase"
-                                            >
-                                                <option value="oficial">Oficial</option>
-                                                <option value="blue">Blue</option>
-                                                <option value="bolsa">MEP (Bolsa)</option>
-                                                <option value="contadoconliqui">CCL</option>
-                                                <option value="tarjeta">Tarjeta</option>
-                                                <option value="mayorista">Mayorista</option>
-                                            </select>
-                                        )}
-
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-xs font-semibold ${formData.autoExchangeRate ? 'text-blue-600' : 'text-gray-400'}`}>
-                                                Sync Automática
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={async () => {
-                                                    const newValue = !formData.autoExchangeRate;
-                                                    setFormData(prev => ({ ...prev, autoExchangeRate: newValue }));
-
-                                                    if (newValue) {
-                                                        // Trigger Auto-Fetch immediately with current source
-                                                        const source = formData.autoExchangeSource || 'blue';
-                                                        try {
-                                                            toast.message(`Sincronizando Dólar ${source}...`);
-                                                            const res = await fetch(`https://dolarapi.com/v1/dolares/${source}`);
-                                                            const data = await res.json();
-                                                            if (data && data.venta) {
-                                                                setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeRate: true }));
-                                                                toast.success(`Dólar ${source} actualizado: $${data.venta}`);
-                                                            }
-                                                        } catch (error) {
-                                                            toast.error("Error al obtener cotización automática");
-                                                            console.error(error);
-                                                        }
-                                                    }
-                                                }}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.autoExchangeRate ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoExchangeRate ? 'translate-x-6' : 'translate-x-1'}`} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </label>
-
-                                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                                    <div className="relative w-full md:w-1/3">
-                                        <input
-                                            type="number"
-                                            name="exchangeRate"
-                                            value={formData.exchangeRate}
-                                            onChange={handleChange}
-                                            disabled={formData.autoExchangeRate} // Disable manual input if auto is on
-                                            className={`w-full p-3 pl-12 border rounded-xl outline-none transition-all font-mono text-xl ${formData.autoExchangeRate
-                                                ? 'bg-gray-50 text-gray-500 border-gray-200 cursor-not-allowed'
-                                                : 'bg-white text-green-800 border-green-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 font-bold'}`}
-                                            placeholder="1200"
-                                        />
-                                        <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold text-lg ${formData.autoExchangeRate ? 'text-gray-400' : 'text-green-600'}`}>$</span>
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">ARS</span>
-                                    </div>
-
-                                    <div className="flex-1 w-full">
-                                        {formData.autoExchangeRate ? (
-                                            <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
-                                                <RefreshCw size={14} className="animate-spin-slow" />
-                                                <span>Sincronizando <strong>{formData.autoExchangeSource?.toUpperCase() || 'BLUE'}</strong> desde <strong>DolarAPI.com</strong></span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={fetchDetailedQuotes}
-                                                    className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-bold transition-colors border border-green-200"
-                                                >
-                                                    {loadingQuotes ? <Loader size={14} className="animate-spin" /> : <TrendingUp size={14} />}
-                                                    Ver Cotizaciones
-                                                </button>
-                                                <p className="text-xs text-gray-400 hidden md:block">
-                                                    Manual. Hacé clic para ver referencias.
-                                                </p>
-                                            </div>
-                                        )}
-                                        {settings.lastExchangeUpdate && (
-                                            <p className="text-[10px] text-gray-400 mt-1">
-                                                Última act: {new Date(settings.lastExchangeUpdate).toLocaleString()}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Suggestions Grid */}
-                                {!formData.autoExchangeRate && showSuggestions && (
-                                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top-2">
-                                        {loadingQuotes ? (
-                                            <div className="col-span-full py-4 text-center text-gray-400 text-xs flex items-center justify-center gap-2">
-                                                <Loader size={14} className="animate-spin" /> Cargando mercado...
-                                            </div>
-                                        ) : (
-                                            suggestionQuotes.filter(q => ['Oficial', 'Blue', 'Bolsa', 'Tarjeta'].includes(q.nombre)).map((quote, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setFormData(prev => ({ ...prev, exchangeRate: quote.venta }));
-                                                        toast.success(`Aplicado Dólar ${quote.nombre}: $${quote.venta}`);
-                                                    }}
-                                                    className="group text-left p-3 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all active:scale-95 bg-white shadow-sm"
-                                                >
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{quote.nombre}</span>
-                                                        <Coins size={12} className="text-gray-300 group-hover:text-green-500" />
-                                                    </div>
-                                                    <div className="font-mono text-lg font-bold text-gray-800 group-hover:text-green-700">
-                                                        ${quote.venta}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-400 mt-1">
-                                                        Compra: ${quote.compra}
-                                                    </div>
-                                                </button>
-                                            ))
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col gap-4">
-                                <label className="flex items-center gap-4 cursor-pointer group">
-                                    <div className="relative flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            name="enableVatGlobal"
-                                            checked={formData.enableVatGlobal}
-                                            onChange={handleChange}
-                                            className="sr-only peer"
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        {/* Pricing Logic & Playground */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-green-100 p-2.5 rounded-xl text-green-700">
+                                        <Globe size={22} />
                                     </div>
                                     <div>
-                                        <span className="block text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">Forzar IVA Globalmente</span>
-                                        <span className="block text-xs text-gray-500">Sobrescribe configuraciones individuales de productos.</span>
+                                        <h2 className="text-xl font-bold text-gray-800">Lógica de Precios</h2>
+                                        <p className="text-xs text-gray-500">Configurá cómo se calculan los precios finales.</p>
                                     </div>
-                                </label>
-
+                                </div>
                                 <button
                                     type="button"
                                     onClick={() => recalculatePrices()}
-                                    className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors mt-2 border border-gray-200"
+                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 text-xs font-bold rounded-lg shadow-sm transition-all"
                                 >
-                                    <RefreshCw size={18} />
-                                    Recalcular Catalog (Precios y URLs)
+                                    <RefreshCw size={14} />
+                                    Forzar Recálculo Global
                                 </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2">
+                                {/* LEFT: Controls */}
+                                <div className="p-6 space-y-8 border-r border-gray-100">
+
+                                    {/* 1. Base Parameters */}
+                                    <div className="space-y-6">
+                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                            1. Parámetros Base
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-2">Margen Global (%)</label>
+                                                <div className="relative group">
+                                                    <input
+                                                        type="number"
+                                                        name="defaultMargin"
+                                                        value={formData.defaultMargin}
+                                                        onChange={handleChange}
+                                                        className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                                                    />
+                                                    <span className="absolute right-3 top-2 text-gray-400 font-bold">%</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-2">Tasa IVA (%)</label>
+                                                <div className="relative group">
+                                                    <input
+                                                        type="number"
+                                                        name="vatRate"
+                                                        value={formData.vatRate}
+                                                        onChange={handleChange}
+                                                        className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                                                    />
+                                                    <span className="absolute right-3 top-2 text-gray-400 font-bold">%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 2. Dollar Logic */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">
+                                                2. Cotización Dólar
+                                            </h3>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-bold ${formData.autoExchangeRate ? 'text-blue-600' : 'text-gray-400'}`}>
+                                                    SYNC AUTO
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        const newValue = !formData.autoExchangeRate;
+                                                        setFormData(prev => ({ ...prev, autoExchangeRate: newValue }));
+                                                        if (newValue) {
+                                                            const source = formData.autoExchangeSource || 'blue';
+                                                            try {
+                                                                toast.message(`Sincronizando Dólar ${source}...`);
+                                                                const res = await fetch(`https://dolarapi.com/v1/dolares/${source}`);
+                                                                const data = await res.json();
+                                                                if (data && data.venta) {
+                                                                    setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeRate: true }));
+                                                                    toast.success(`Actualizado: $${data.venta}`);
+                                                                }
+                                                            } catch (error) { toast.error("Error al sincronizar"); }
+                                                        }
+                                                    }}
+                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${formData.autoExchangeRate ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                                >
+                                                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${formData.autoExchangeRate ? 'translate-x-5' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <div className="flex gap-2 mb-3">
+                                                {formData.autoExchangeRate && (
+                                                    <select
+                                                        name="autoExchangeSource"
+                                                        value={formData.autoExchangeSource}
+                                                        onChange={async (e) => {
+                                                            const newSource = e.target.value;
+                                                            setFormData(prev => ({ ...prev, autoExchangeSource: newSource }));
+                                                            try {
+                                                                const res = await fetch(`https://dolarapi.com/v1/dolares/${newSource}`);
+                                                                const data = await res.json();
+                                                                if (data?.venta) setFormData(prev => ({ ...prev, exchangeRate: data.venta }));
+                                                            } catch (e) { }
+                                                        }}
+                                                        className="flex-1 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg py-2 px-3 uppercase outline-none"
+                                                    >
+                                                        <option value="oficial">Oficial</option>
+                                                        <option value="blue">Blue</option>
+                                                        <option value="bolsa">MEP</option>
+                                                        <option value="tarjeta">Tarjeta</option>
+                                                        <option value="mayorista">Mayorista</option>
+                                                    </select>
+                                                )}
+                                                {!formData.autoExchangeRate && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={fetchDetailedQuotes}
+                                                        className="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 border border-green-200 rounded-lg py-2 px-3 text-xs font-bold hover:bg-green-100 transition-colors"
+                                                    >
+                                                        <TrendingUp size={14} /> Ver Cotizaciones
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    name="exchangeRate"
+                                                    value={formData.exchangeRate}
+                                                    onChange={handleChange}
+                                                    disabled={formData.autoExchangeRate}
+                                                    className={`w-full text-3xl font-mono font-bold py-4 pl-10 border rounded-xl outline-none transition-all ${formData.autoExchangeRate
+                                                        ? 'bg-gray-50 text-gray-400 border-gray-200'
+                                                        : 'bg-white text-green-700 border-green-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10'
+                                                        }`}
+                                                />
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-300 font-bold">$</span>
+                                            </div>
+
+                                            {/* Manual Suggestions */}
+                                            {!formData.autoExchangeRate && showSuggestions && (
+                                                <div className="absolute z-10 top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 p-2 grid grid-cols-2 gap-2 animate-in fade-in zoom-in-95">
+                                                    {loadingQuotes ? (
+                                                        <div className="col-span-2 p-4 text-center text-xs text-gray-400"><Loader className="animate-spin mx-auto mb-1" />Cargando...</div>
+                                                    ) : (
+                                                        suggestionQuotes.filter(q => ['Oficial', 'Blue', 'Bolsa', 'Tarjeta'].includes(q.nombre)).map((q, i) => (
+                                                            <button
+                                                                key={i} type="button"
+                                                                onClick={() => {
+                                                                    setFormData(prev => ({ ...prev, exchangeRate: q.venta }));
+                                                                    setShowSuggestions(false);
+                                                                }}
+                                                                className="text-left p-2 hover:bg-green-50 rounded-lg group transition-colors"
+                                                            >
+                                                                <div className="text-[10px] font-bold text-gray-500 uppercase">{q.nombre}</div>
+                                                                <div className="text-sm font-bold text-gray-800 group-hover:text-green-600">${q.venta}</div>
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* 3. Global Switches */}
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <label className="flex items-center gap-3 cursor-pointer group p-3 hover:bg-gray-50 rounded-lg transition-colors -mx-3">
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    name="enableVatGlobal"
+                                                    checked={formData.enableVatGlobal}
+                                                    onChange={handleChange}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                            </div>
+                                            <div>
+                                                <span className="block text-xs font-bold text-gray-700 group-hover:text-blue-600">Forzar IVA en todos</span>
+                                                <span className="block text-[10px] text-gray-400">Si activo, ignora configuración individual de productos.</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT: Playground */}
+                                <div className="bg-gray-50/50 p-6 flex flex-col justify-center">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        Simulación en Tiempo Real
+                                    </h3>
+
+                                    {/* Simulation Card */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 transform transition-all hover:scale-[1.01] hover:shadow-2xl">
+                                        {/* Product Header */}
+                                        <div className="flex gap-4 mb-6 pb-6 border-b border-dashed border-gray-200">
+                                            <div className="w-12 h-16 bg-gray-200 rounded-lg shadow-inner flex-shrink-0"></div>
+                                            <div className="flex-1">
+                                                <div className="h-4 w-3/4 bg-gray-100 rounded mb-2"></div>
+                                                <div className="h-3 w-1/2 bg-gray-100 rounded"></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Dynamic Calc */}
+                                        <div className="space-y-3 font-mono text-sm">
+                                            <div className="flex justify-between items-center text-gray-500">
+                                                <span>Costo Input (USD)</span>
+                                                <span className="font-bold">60.00 USD</span>
+                                            </div>
+
+                                            <div className="flex justify-between items-center text-gray-500 text-xs pl-4 border-l-2 border-gray-200">
+                                                <span>× Cotización</span>
+                                                <span>$ {formData.exchangeRate}</span>
+                                            </div>
+
+                                            <div className="flex justify-between items-center text-gray-800 font-bold bg-gray-50 p-2 rounded-lg">
+                                                <span>Base (ARS)</span>
+                                                <span>$ {(60 * formData.exchangeRate).toLocaleString('es-AR')}</span>
+                                            </div>
+
+                                            <div className="flex justify-between items-center text-green-600 text-xs pl-4">
+                                                <span>+ Margen ({formData.defaultMargin}%)</span>
+                                                <span>+ $ {(60 * formData.exchangeRate * (formData.defaultMargin / 100)).toLocaleString('es-AR')}</span>
+                                            </div>
+
+                                            <div className="flex justify-between items-center text-blue-600 text-xs pl-4">
+                                                <span>+ IVA ({formData.vatRate}%)</span>
+                                                <span>+ $ {(60 * formData.exchangeRate * (1 + formData.defaultMargin / 100) * (formData.vatRate / 100)).toLocaleString('es-AR')}</span>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-gray-100 mt-4">
+                                                <div className="flex justify-between items-end">
+                                                    <span className="text-sm font-bold text-gray-400 uppercase">Precio Final</span>
+                                                    <span className="text-3xl font-bold text-brand-dark leading-none">
+                                                        $ {Math.round(60 * formData.exchangeRate * (1 + formData.defaultMargin / 100) * (1 + formData.vatRate / 100)).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                                <div className="text-right text-[10px] text-gray-400 mt-1">
+                                                    Ejemplo para un juego de 60 USD
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
