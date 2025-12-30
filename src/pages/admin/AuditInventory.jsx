@@ -9,7 +9,7 @@ import { searchGame, getGameDetails } from '../../services/gameService';
 
 const AuditInventory = () => {
     const { getMissingProducts } = useProductStore();
-    const { consoles } = useConsoleStore();
+    const { consoles, fetchConsoles } = useConsoleStore();
     const [loading, setLoading] = useState(false);
     const [enriching, setEnriching] = useState(false);
     const [missingProducts, setMissingProducts] = useState(null);
@@ -26,6 +26,8 @@ const AuditInventory = () => {
     // Initial Load
     useEffect(() => {
         handleCheck();
+        // Ensure consoles are loaded for mapping
+        if (consoles.length === 0) fetchConsoles();
     }, []);
 
     const handleCheck = async () => {
@@ -51,7 +53,7 @@ const AuditInventory = () => {
         if (upperSku.startsWith('PS4')) targetName = 'PlayStation 4';
         else if (upperSku.startsWith('PS5')) targetName = 'PlayStation 5';
         else if (upperSku.startsWith('NSW')) targetName = 'Nintendo Switch';
-        else if (upperSku.startsWith('SW2')) targetName = 'Nintendo Switch';
+        else if (upperSku.startsWith('SW2') || upperSku.startsWith('NSW2')) targetName = 'Nintendo Switch 2';
 
         if (targetName) {
             const found = consoles.find(c => c.name.toLowerCase() === targetName.toLowerCase());
@@ -60,15 +62,15 @@ const AuditInventory = () => {
         return '';
     };
 
-    // Helper: Manual Title Corrections (For stubborn inputs)
+    // Helper: Manual Title Corrections
     const TITLE_CORRECTIONS = {
         'Disney Ilusion Island': 'Disney Illusion Island',
         'Paw Patrol Gran Prix': 'Paw Patrol Grand Prix',
-        'Fc 26': 'EA Sports FC 25', // Assuming typo for current/next gen, or placeholder
+        'Fc 26': 'EA Sports FC 25',
         'Fc 25': 'EA Sports FC 25',
         'Fc 24': 'EA Sports FC 24',
-        'Mario Kart World': 'Mario Kart 8 Deluxe', // Guessing "World" is "8" typo or similar
-        'Donkey Kong Bananza': 'Donkey Kong Country Tropical Freeze', // Wild guess or user specific name
+        'Mario Kart World': 'Mario Kart 8 Deluxe',
+        'Donkey Kong Bananza': 'Donkey Kong Country Tropical Freeze',
         'Dragon Ball Sparking Zero': 'Dragon Ball: Sparking! Zero',
         'Pokemon Legends Z-a': 'Pokémon Legends: Z-A',
         'Kirby Return To Dreamland Deluxe': "Kirby's Return to Dream Land Deluxe",
@@ -78,16 +80,14 @@ const AuditInventory = () => {
     // Helper: Clean Title Common
     const cleanTitleCommon = (rawName) => {
         if (!rawName) return '';
-
-        // 1. Check Manual Corrections First
         const cleanRaw = rawName.trim();
-        const baseName = cleanRaw.replace(/\s+(Nsw2|NSW|PS5|PS4|SW2)$/i, '').trim(); // Quick strip for match
+        const baseName = cleanRaw.replace(/\s+(Nsw2|NSW|PS5|PS4|SW2)$/i, '').trim();
         if (TITLE_CORRECTIONS[baseName]) return TITLE_CORRECTIONS[baseName];
         if (TITLE_CORRECTIONS[cleanRaw]) return TITLE_CORRECTIONS[cleanRaw];
 
         return cleanRaw
-            .replace(/\s+(PS[45]|NSW\d?|SW\d?|Switch|Playstation\d?)$/i, '') // Suffixes
-            .replace(/^(PS[45]|NSW\d?|SW\d?)\s+/i, '') // Prefixes
+            .replace(/\s+(PS[45]|NSW\d?|SW\d?|Switch|Playstation\d?)$/i, '')
+            .replace(/^(PS[45]|NSW\d?|SW\d?)\s+/i, '')
             .replace(/\s*\(.*?\)\s*/g, '')
             .replace(/\s*\[.*?\]\s*/g, '')
             .replace(/\b(EU|EUR|USA|US|JP|JPN|PAL|NTSC|NA|UK|ASIA)\b/gi, '')
@@ -96,41 +96,23 @@ const AuditInventory = () => {
             .trim();
     };
 
-    // Helper: Format Name (Capitalize)
     const formatTitle = (title) => {
         if (!title) return '';
         const cleaned = cleanTitleCommon(title);
         return cleaned.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     };
 
-    // Helper: Clean Title for Search
     const cleanTitleForSearch = (rawName) => {
-        // If "Pokemon", ensure accent for better IGDB matching sometimes (though IGDB is usually lenient)
         let cleaned = cleanTitleCommon(rawName);
         return cleaned;
     };
 
-    // Helper: Genre Translation Map
     const genreMap = {
-        'Action': 'Acción',
-        'Adventure': 'Aventura',
-        'RPG': 'Rol',
-        'Strategy': 'Estrategia',
-        'Shooter': 'Disparos',
-        'Casual': 'Casual',
-        'Simulation': 'Simulación',
-        'Puzzle': 'Puzle',
-        'Arcade': 'Arcade',
-        'Platformer': 'Plataformas',
-        'Racing': 'Carreras',
-        'Sports': 'Deportes',
-        'Fighting': 'Lucha',
-        'Family': 'Familiar',
-        'Board Games': 'De Mesa',
-        'Educational': 'Educativo',
-        'Card': 'Cartas',
-        'Indie': 'Indie',
-        'Massively Multiplayer': 'MMO'
+        'Action': 'Acción', 'Adventure': 'Aventura', 'RPG': 'Rol', 'Strategy': 'Estrategia',
+        'Shooter': 'Disparos', 'Casual': 'Casual', 'Simulation': 'Simulación', 'Puzzle': 'Puzle',
+        'Arcade': 'Arcade', 'Platformer': 'Plataformas', 'Racing': 'Carreras', 'Sports': 'Deportes',
+        'Fighting': 'Lucha', 'Family': 'Familiar', 'Board Games': 'De Mesa', 'Educational': 'Educativo',
+        'Card': 'Cartas', 'Indie': 'Indie', 'Massively Multiplayer': 'MMO'
     };
 
     const translateGenres = (genres) => {
@@ -138,17 +120,12 @@ const AuditInventory = () => {
         return genres.map(g => genreMap[g] || g);
     };
 
-    // Helper: Validate Match
-    // Helper: Validate Match (Fuzzy & Strict)
     const isGoodMatch = (original, result) => {
         if (!original || !result) return false;
-
-        // 1. Strict Substring Check (Fast)
         const cleanOriginal = cleanTitleCommon(original).toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanResult = result.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (cleanResult.includes(cleanOriginal) || cleanOriginal.includes(cleanResult)) return true;
 
-        // 2. Token Overlap Strategy (Fuzzy)
         const tokenize = (text) => text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 0);
         const tokensOrig = tokenize(cleanTitleCommon(original));
         const tokensRes = tokenize(result);
@@ -157,23 +134,15 @@ const AuditInventory = () => {
 
         let matches = 0;
         tokensOrig.forEach(token => {
-            // Exact token match
             if (tokensRes.includes(token)) {
                 matches++;
             }
-            // Common Roman Numeral Mappings (1 -> I, 2 -> II)
             else if (token === '1' && (tokensRes.includes('i') || tokensRes.includes('one'))) matches++;
             else if (token === '2' && (tokensRes.includes('ii') || tokensRes.includes('two'))) matches++;
             else if (token === '3' && (tokensRes.includes('iii') || tokensRes.includes('three'))) matches++;
         });
 
-        // Calculate overlap score relative to the INPUT (what the user has)
-        // We want to ensure most of the user's words are present in the result.
         const score = matches / tokensOrig.length;
-
-        // Threshold: 0.6 means 3 out of 5 words must match. 
-        // e.g. "The Last Of Part 1" (5 words) vs "The Last Of Us Part I"
-        // Matches: "The", "Last", "Of", "Part", "1"->"I" (5/5) = 1.0 -> Match!
         return score >= 0.6;
     };
 
@@ -187,43 +156,30 @@ const AuditInventory = () => {
         let enrichedCount = 0;
         let processedCount = 0;
         const newProductsState = [...missingProducts];
-
-        // CONCURRENCY CONTROL
-        // IGDB Limit is ~4 requests/second. 
-        // Each item takes 1 Search + 1 Detail (if found) = 2 Requests.
-        // Safe Concurrency = 2 items at once (4 requests) or 3 items with stagger.
         const CONCURRENCY_LIMIT = 3;
 
         const processItem = async (item) => {
-            if (item._suggestedData) return; // Skip if already done
+            if (item._suggestedData) return;
 
             const searchName = cleanTitleForSearch(item.name);
             try {
-                // 1. Search
                 console.log(`[AutoFill] Searching: "${searchName}"`);
                 let results = await searchGame(searchName);
 
-                // RETRY STRATEGY: Broader Search
                 if (!results || results.length === 0) {
                     const words = searchName.split(' ');
                     if (words.length > 3) {
                         const shortName = words.slice(0, 3).join(' ');
-                        console.log(`[AutoFill] Retry with short name: "${shortName}"`);
                         results = await searchGame(shortName);
                     }
                 }
 
                 if (results && results.length > 0) {
                     const bestMatch = results[0];
-                    // Relaxed matching for retry cases? 
-                    // Use isGoodMatch but maybe log confidence
                     if (isGoodMatch(searchName, bestMatch.name) || isGoodMatch(searchName.split(' ').slice(0, 3).join(' '), bestMatch.name)) {
-                        // 2. Get Details
                         const details = await getGameDetails(bestMatch.id, searchName);
                         if (details) {
                             details.genres = translateGenres(details.genres);
-
-                            // 3. Update State safely using SKU finding
                             const index = newProductsState.findIndex(p => p.sku === item.sku);
                             if (index !== -1) {
                                 newProductsState[index] = {
@@ -248,12 +204,9 @@ const AuditInventory = () => {
             }
         };
 
-        // Chunked Execution to prevent 429s (simple queue)
         for (let i = 0; i < filteredItems.length; i += CONCURRENCY_LIMIT) {
             const chunk = filteredItems.slice(i, i + CONCURRENCY_LIMIT);
             await Promise.all(chunk.map(item => processItem(item)));
-            // Small cooldown between chunks prevents rate limit spikes
-            // 250ms delay after every 3 items
             await new Promise(r => setTimeout(r, 250));
         }
 
@@ -286,8 +239,45 @@ const AuditInventory = () => {
 
             const productsPayload = itemsToImport.map(item => {
                 const suggested = item._suggestedData || {};
-                // Prioritize explicit console from Sheet, fallback to detection
-                const consoleId = item.console || detectConsoleId(item.sku);
+
+                // 1. Determine Logical Console ID (ps5, nsw, nsw2, etc.)
+                let logicalId = item.console || detectConsoleId(item.sku);
+
+                // 2. Resolve to Real Firestore ID (Robust Fuzzy Match)
+                let realConsoleId = '';
+
+                if (logicalId) {
+                    const cleanLogId = logicalId.toLowerCase();
+                    const found = consoles.find(c => {
+                        const name = c.name.toLowerCase();
+
+                        // Switch 2
+                        if (cleanLogId === 'nsw2' || cleanLogId === 'sw2' || cleanLogId.includes('switch 2')) {
+                            return name.includes('switch 2') || name.includes('sw2') || name.includes('nintendo switch 2');
+                        }
+                        // Switch 1 (Exclude Switch 2)
+                        if (cleanLogId === 'nsw' || cleanLogId === 'switch') {
+                            return (name.includes('switch') || name.includes('nsw')) && !name.includes('switch 2') && !name.includes('sw2');
+                        }
+                        // PS5
+                        if (cleanLogId === 'ps5' || cleanLogId.includes('playstation 5')) {
+                            return name.includes('ps5') || name.includes('playstation 5');
+                        }
+                        // PS4
+                        if (cleanLogId === 'ps4' || cleanLogId.includes('playstation 4')) {
+                            return name.includes('ps4') || name.includes('playstation 4');
+                        }
+
+                        return false;
+                    });
+
+                    if (found) realConsoleId = found.id;
+                }
+
+                if (!realConsoleId && !item.console) {
+                    realConsoleId = detectConsoleId(item.sku);
+                }
+
                 const costPrice = parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0;
 
                 return {
@@ -295,7 +285,7 @@ const AuditInventory = () => {
                     title: formatTitle(item.name),
                     supplierName: item.name,
                     costPrice: costPrice,
-                    console: consoleId,
+                    console: realConsoleId,
                     stock: true,
                     image: suggested.background_image || '',
                     trailerUrl: suggested.trailer || '',
@@ -314,7 +304,6 @@ const AuditInventory = () => {
                 });
             });
 
-            // Refresh list
             await handleCheck();
 
         } catch (error) {
@@ -329,7 +318,6 @@ const AuditInventory = () => {
     const handleAdd = (item) => {
         const logicalConsoleId = item.console || detectConsoleId(item.sku);
 
-        // Resolve Real DB ID
         let realConsoleId = '';
         const targetName =
             logicalConsoleId === 'ps5' ? 'PlayStation 5' :
@@ -342,14 +330,10 @@ const AuditInventory = () => {
             if (found) realConsoleId = found.id;
         }
 
-        // Fallback or Active
         if (!realConsoleId) realConsoleId = consoles.find(c => c.active)?.id || '';
 
         const suggested = item._suggestedData || {};
-
-        let trailerUrl = suggested.trailer || '';
-        // No forced fallback to search URL
-        // User prefers empty if not found, or manual search button (to be added)
+        const trailerUrl = suggested.trailer || '';
 
         setItemToCreate({
             sku: item.sku,
@@ -359,10 +343,9 @@ const AuditInventory = () => {
             stock: true,
             console: realConsoleId,
             manualPrice: '',
-            // Pre-fill from suggested data
             image: suggested.background_image || '',
             trailerUrl: trailerUrl,
-            description: suggested.description || '', // Description from RAWG might still be English
+            description: suggested.description || '',
             tags: suggested.genres || []
         });
         setIsModalOpen(true);
@@ -375,19 +358,14 @@ const AuditInventory = () => {
 
     const handleProductCreationSuccess = (createdProduct) => {
         if (!createdProduct || !createdProduct.sku) return;
-
         toast.success(`Producto "${createdProduct.title}" creado y removido de la lista.`);
-
         setMissingProducts(prev => {
             if (!prev) return prev;
-            // Remove item from list if SKU matches
             return prev.filter(item => item.sku !== createdProduct.sku);
         });
     };
 
-    // Filter Logic
     const filteredItems = missingProducts?.filter(item => {
-        // 1. Console Filter
         let matchesConsole = false;
         if (selectedConsoleFilter === 'ALL') matchesConsole = true;
         else {
@@ -395,13 +373,11 @@ const AuditInventory = () => {
             if (selectedConsoleFilter === 'NSW') matchesConsole = item.console === 'nsw' || item.console === 'nsw2';
         }
 
-        // 2. Search Filter
         let matchesSearch = true;
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             matchesSearch = item.name.toLowerCase().includes(q) || item.sku.toLowerCase().includes(q);
         }
-
         return matchesConsole && matchesSearch;
     }) || [];
 
@@ -432,10 +408,8 @@ const AuditInventory = () => {
                         {enriching ? 'Enriqueciendo...' : 'Auto-Completar Datos'}
                     </button>
 
-                    {/* Import Buttons */}
                     {filteredItems.length > 0 && (
                         <>
-                            {/* Only show "Import Enriched" if there are any enriched items */}
                             {filteredItems.some(i => i._suggestedData) && (
                                 <button
                                     onClick={handleImportEnrichedOnly}
@@ -446,7 +420,6 @@ const AuditInventory = () => {
                                     Importar {filteredItems.filter(i => i._suggestedData).length} (Completos)
                                 </button>
                             )}
-
                             <button
                                 onClick={handleBulkImport}
                                 disabled={loading || enriching}
@@ -494,7 +467,6 @@ const AuditInventory = () => {
                     Nintendo (NSW/SW2)
                 </button>
 
-                {/* Search Filter */}
                 <div className="ml-auto w-full md:w-64 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
@@ -544,7 +516,6 @@ const AuditInventory = () => {
                                     <tr key={index} className="hover:bg-blue-50/30 transition-colors group">
                                         <td className="p-4 font-mono text-xs font-bold text-gray-500">{item.sku}</td>
                                         <td className="p-4 text-xs font-bold text-gray-400 uppercase">
-                                            {/* Show mapped console name if possible, else raw */}
                                             {(() => {
                                                 const effectiveConsole = item.console || detectConsoleId(item.sku);
                                                 if (effectiveConsole) {
@@ -599,7 +570,6 @@ const AuditInventory = () => {
                 )}
             </div>
 
-            {/* Progress Modal */}
             {progress.show && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
                     <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
@@ -608,7 +578,6 @@ const AuditInventory = () => {
                         </div>
                         <h3 className="text-xl font-bold text-gray-800 mb-2">{progress.message}</h3>
 
-                        {/* Progress Bar */}
                         <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden">
                             <div
                                 className="bg-purple-600 h-2.5 rounded-full transition-all duration-300 ease-out"
@@ -623,7 +592,6 @@ const AuditInventory = () => {
                 </div>
             )}
 
-            {/* Create Modal */}
             <ProductModal
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
