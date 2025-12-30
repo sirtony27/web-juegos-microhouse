@@ -280,11 +280,18 @@ const AuditInventory = () => {
 
                 const costPrice = parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0;
 
+                // Infer Currency (Rule of Thumb: < 2000 is likely USD)
+                let currency = 'ARS';
+                if (costPrice > 0 && costPrice < 2000) {
+                    currency = 'USD';
+                }
+
                 return {
                     sku: item.sku,
                     title: formatTitle(item.name),
                     supplierName: item.name,
                     costPrice: costPrice,
+                    currency: currency,
                     console: realConsoleId,
                     stock: true,
                     image: suggested.background_image || '',
@@ -335,11 +342,19 @@ const AuditInventory = () => {
         const suggested = item._suggestedData || {};
         const trailerUrl = suggested.trailer || '';
 
+        const costPrice = parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0;
+        // Infer Currency
+        let currency = 'ARS';
+        if (costPrice > 0 && costPrice < 2000) {
+            currency = 'USD';
+        }
+
         setItemToCreate({
             sku: item.sku,
             title: formatTitle(item.name),
             supplierName: item.name,
-            costPrice: parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0,
+            costPrice: costPrice,
+            currency: currency,
             stock: true,
             console: realConsoleId,
             manualPrice: '',
