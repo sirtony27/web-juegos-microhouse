@@ -200,12 +200,16 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
                 } else {
                     setSelectedGenres([]);
                 }
-                // Determine currency heuristic
-                const initialCost = parseFloat(productToEdit.costPrice || 0);
-                if (initialCost > 0 && initialCost < 2000) {
-                    setCurrency('USD');
+                // Initialize Currency with Smart Inference for legacy data
+                if (productToEdit.currency) {
+                    setCurrency(productToEdit.currency);
                 } else {
-                    setCurrency('ARS');
+                    const initialCost = parseFloat(productToEdit.costPrice || 0);
+                    if (initialCost > 0 && initialCost < 2000) {
+                        setCurrency('USD');
+                    } else {
+                        setCurrency('ARS');
+                    }
                 }
             } else {
                 reset({
@@ -255,10 +259,9 @@ const ProductModal = ({ isOpen, onClose, productToEdit, onSuccess }) => {
             manualPrice: data.manualPrice ? parseFloat(data.manualPrice) : 0,
             customMargin: data.customMargin ? parseFloat(data.customMargin) : null,
             discountPercentage: data.discountPercentage ? parseFloat(data.discountPercentage) : 0,
-            // Convert to ARS if currency was USD, so DB always has ARS
-            costPrice: currency === 'USD'
-                ? (parseFloat(data.costPrice || 0) * (parseFloat(settings?.exchangeRate) || 1200))
-                : (data.costPrice ? parseFloat(data.costPrice) : 0),
+            // Save Cost as is, let the store handle calculation using currency
+            costPrice: parseFloat(data.costPrice) || 0,
+            currency: currency, // Pass the selected currency to Store
             stock: data.stock === 'true' || data.stock === true,
             trailerId: extractYoutubeId(data.trailerUrl),
             // Use local state for tags to ensure pills selection is respected

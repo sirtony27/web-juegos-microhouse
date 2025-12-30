@@ -74,7 +74,8 @@ export const useProductStore = create((set, get) => ({
                 product.customMargin,
                 product.discountPercentage,
                 settings,
-                product.manualPrice
+                product.manualPrice,
+                product.currency
             );
 
             // Generate slug
@@ -96,6 +97,7 @@ export const useProductStore = create((set, get) => ({
                 supplierName: data.supplierName || data.title,
                 sku: data.sku || '',
                 costPrice: parseFloat(data.costPrice) || 0,
+                currency: product.currency || 'ARS',
                 createdAt: new Date().toISOString()
             });
 
@@ -134,7 +136,8 @@ export const useProductStore = create((set, get) => ({
                 merged.customMargin,
                 merged.discountPercentage,
                 settings,
-                merged.manualPrice
+                merged.manualPrice,
+                merged.currency
             );
 
             // Update slug if title changed, unless slug is manually provided? 

@@ -1,4 +1,4 @@
-export const calculateProductPrice = (cost, customMargin, discountPercent, globalSettings, useManualPrice = 0) => {
+export const calculateProductPrice = (cost, customMargin, discountPercent, globalSettings, useManualPrice = 0, currency = 'ARS') => {
     // 1. If Manual Price is set and valid, it overrides everything (except maybe discount? No, usually manual overrides final).
     // However, the user wants discounts to work.
     // Let's assume Manual Price = "Base Selling Price" before discount?
@@ -9,12 +9,18 @@ export const calculateProductPrice = (cost, customMargin, discountPercent, globa
     // If Manual Price == 0, calculated from Cost + Margin.
 
     let basePrice = 0;
-    const { globalMargin = 30, vatRate = 21, enableVatGlobal = false } = globalSettings;
+    const { globalMargin = 30, vatRate = 21, enableVatGlobal = false, exchangeRate = 1200 } = globalSettings;
+
+    // Convert Cost to ARS if currency is USD
+    let effectiveCost = parseFloat(cost) || 0;
+    if (currency === 'USD') {
+        effectiveCost = effectiveCost * parseFloat(exchangeRate);
+    }
 
     if (useManualPrice > 0) {
         basePrice = parseFloat(useManualPrice);
     } else {
-        const validCost = parseFloat(cost) || 0;
+        const validCost = effectiveCost;
         const validMargin = (customMargin !== undefined && customMargin !== null && customMargin !== '')
             ? parseFloat(customMargin)
             : parseFloat(globalMargin);
