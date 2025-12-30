@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useProductStore } from '../../store/useProductStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, DollarSign } from 'lucide-react';
+import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, DollarSign, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
 import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
@@ -22,6 +22,18 @@ const AdminDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncResult, setLastSyncResult] = useState(null);
+
+    // Stale Price Logic
+    const { daysSinceSync, isStale } = useMemo(() => {
+        if (!settings.lastSync) return { daysSinceSync: -1, isStale: true };
+        
+        const last = new Date(settings.lastSync);
+        const now = new Date();
+        const diffTime = Math.abs(now - last);
+        const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        return { daysSinceSync: days, isStale: days > 3 };
+    }, [settings.lastSync]);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,7 +71,7 @@ const AdminDashboard = () => {
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl shadow-sm md:bg-transparent md:p-0 md:shadow-none">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl shadow-sm md:bg-transparent md:p-0 md:shadow-none">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-brand-dark">Panel de Administración</h1>
                     <p className="text-gray-500 text-sm md:text-base">Gestión de inventario y precios</p>
@@ -87,8 +99,39 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
+            {/* STALE PRICE WARNING */}
+            {isStale && (
+                <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 bg-amber-100 rounded-full text-amber-600 flex-shrink-0">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-amber-900 text-lg">
+                                {daysSinceSync === -1 ? '¡Atención! Precios nunca sincronizados' : `¡Atención! Precios desactualizados (${daysSinceSync} días)`}
+                            </h3>
+                            <p className="text-amber-800 text-sm mt-1 leading-relaxed">
+                                {daysSinceSync === -1 
+                                    ? 'Es la primera vez que ingresas. Sincroniza ahora para cargar los precios bases.' 
+                                    : `La última actualización fue el ${new Date(settings.lastSync).toLocaleDateString()}. Los costos del proveedor podrían haber cambiado.`}
+                                <br className="hidden sm:block"/> Sincroniza ahora para evitar vender a pérdida.
+                            </p>
+                        </div>
+                    </div>
+                     <button
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        className="w-full sm:w-auto px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors whitespace-nowrap flex items-center justify-center gap-2"
+                    >
+                        <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+                        {isSyncing ? 'Actualizando...' : 'Actualizar Precios'}
+                    </button>
+                </div>
+            )}
+
             {lastSyncResult && (
-                <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6 border border-blue-200">
+                <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6 border border-blue-200 flex items-center gap-2">
+                    <RefreshCw size={16} />
                     {lastSyncResult}
                 </div>
             )}

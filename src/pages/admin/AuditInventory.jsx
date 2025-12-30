@@ -286,7 +286,8 @@ const AuditInventory = () => {
 
             const productsPayload = itemsToImport.map(item => {
                 const suggested = item._suggestedData || {};
-                const consoleId = detectConsoleId(item.sku);
+                // Prioritize explicit console from Sheet, fallback to detection
+                const consoleId = item.console || detectConsoleId(item.sku);
                 const costPrice = parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0;
 
                 return {
@@ -326,7 +327,7 @@ const AuditInventory = () => {
     };
 
     const handleAdd = (item) => {
-        const consoleId = detectConsoleId(item.sku);
+        const consoleId = item.console || detectConsoleId(item.sku);
         const suggested = item._suggestedData || {};
 
         let trailerUrl = suggested.trailer || '';
@@ -514,7 +515,8 @@ const AuditInventory = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
-                                    <th className="p-4">SKU</th>
+                                    <th className="p-4">EAN</th>
+                                    <th className="p-4">Consola</th>
                                     <th className="p-4">Referencia (Sheet)</th>
                                     <th className="p-4">Datos Sugeridos</th>
                                     <th className="p-4 text-right">Costo (Sheet)</th>
@@ -525,6 +527,7 @@ const AuditInventory = () => {
                                 {filteredItems.map((item, index) => (
                                     <tr key={index} className="hover:bg-blue-50/30 transition-colors group">
                                         <td className="p-4 font-mono text-xs font-bold text-gray-500">{item.sku}</td>
+                                        <td className="p-4 text-xs font-bold text-gray-400 uppercase">{item.categoryRaw || item.console || '-'}</td>
                                         <td className="p-4 font-medium text-gray-800">{formatTitle(item.name)}</td>
                                         <td className="p-4">
                                             {item._suggestedData ? (

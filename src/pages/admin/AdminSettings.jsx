@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../../store/useSettingsStore'; // Changed from useConfigStore
 import { useProductStore } from '../../store/useProductStore';
 import ConsoleManager from '../../components/admin/ConsoleManager';
-import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings, RefreshCw } from 'lucide-react';
+import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings, RefreshCw, Trash } from 'lucide-react';
+import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
@@ -59,24 +60,38 @@ const AdminSettings = () => {
 
         setVerifying(true);
         setVerifyStatus(null);
+        toast.message('Verificando conexión y formato...');
 
         try {
             const response = await fetch(formData.sheetUrl);
             if (response.ok) {
                 const text = await response.text();
-                // Simple check if it looks like a CSV
+                // Check CSV Basics
                 if (text.includes(',') || text.includes(';')) {
+                    // Quick Parse to count rows and preview
+                    const rows = text.split('\n').filter(r => r.trim() !== '');
+                    const rowCount = rows.length;
+                    const firstRow = rows[0] || 'Vacia';
+                    const lastRow = rows[rows.length - 1] || 'Vacia';
+
                     setVerifyStatus('success');
+                    toast.success(`¡Conexión Exitosa! Detectados ${rowCount} juegos/filas.`);
+
+                    // console.log preview for debug
+                    console.log("CSV Preview:", { firstRow, lastRow });
                 } else {
                     console.warn("URL reachable but content doesn't look like CSV");
                     setVerifyStatus('warning');
+                    toast.warning('Se conecta, pero no parece un CSV válido.');
                 }
             } else {
                 setVerifyStatus('error');
+                toast.error(`Error HTTP: ${response.status}`);
             }
         } catch (error) {
             console.error(error);
             setVerifyStatus('error');
+            toast.error('No se pudo conectar a esa URL.');
         } finally {
             setVerifying(false);
         }
@@ -322,6 +337,72 @@ const AdminSettings = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* DANGER ZONE */}
+                            <div className="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200 relative overflow-hidden">
+                                {!isTechUnlocked && <div className="absolute inset-0 z-10 bg-gray-50/10 backdrop-blur-[1px]"></div>}
+
+                                <h3 className="text-sm font-bold text-red-800 mb-4 border-b border-red-200 pb-2 flex items-center gap-2">
+                                    <XCircle size={16} /> Zona de Peligro
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <p className="text-xs text-red-600">
+                                        Estas acciones son destructivas e irreversibles. Ten cuidado.
+                                    </p>
+
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1">
+                                            Escribí "BORRAR" para confirmar
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="BORRAR"
+                                            className="form-input text-xs border-red-300 focus:border-red-500 focus:ring-red-500"
+                                            onChange={(e) => {
+                                                if (e.target.value === 'BORRAR') {
+                                                    e.target.style.borderColor = 'green';
+                                                } else {
+                                                    e.target.style.borderColor = '';
+                                                }
+                                            }}
+                                            id="delete-confirm-input"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        disabled={!isTechUnlocked || verifying}
+                                        onClick={async () => {
+                                            const confirmInput = document.getElementById('delete-confirm-input');
+                                            if (confirmInput.value !== 'BORRAR') {
+                                                alert('Debes escribir "BORRAR" (en mayúsculas) para confirmar.');
+                                                return;
+                                            }
+
+                                            if (window.confirm('¿ESTÁS SEGURO? Se borrarán TODOS los productos para siempre.')) {
+                                                setVerifying(true); // Reuse loading state
+                                                try {
+                                                    const { deleteAllProducts } = useProductStore.getState();
+                                                    await deleteAllProducts((current, total) => {
+                                                        console.log(`Borrando ${current}/${total}`);
+                                                    });
+                                                    confirmInput.value = '';
+                                                } catch (e) {
+                                                    console.error(e);
+                                                } finally {
+                                                    setVerifying(false); // Reuse loading state
+                                                }
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2"
+                                    >
+                                        <Trash size={16} />
+                                        ELIMINAR TODO EL INVENTARIO
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </form>

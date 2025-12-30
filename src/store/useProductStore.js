@@ -195,6 +195,45 @@ export const useProductStore = create((set, get) => ({
         }
     },
 
+    // DANGER: Delete ALL Products
+    deleteAllProducts: async (onProgress) => {
+        try {
+            const querySnapshot = await getDocs(collection(db, "products"));
+            const total = querySnapshot.size;
+            if (total === 0) {
+                toast.info("No hay productos para eliminar.");
+                return;
+            }
+
+            const BATCH_SIZE = 450;
+            const chunks = [];
+            const docs = querySnapshot.docs;
+
+            for (let i = 0; i < total; i += BATCH_SIZE) {
+                chunks.push(docs.slice(i, i + BATCH_SIZE));
+            }
+
+            let deletedCount = 0;
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(db);
+                chunk.forEach(docSnap => {
+                    batch.delete(docSnap.ref);
+                });
+                await batch.commit();
+                deletedCount += chunk.length;
+                if (onProgress) onProgress(deletedCount, total);
+            }
+
+            set({ products: [] });
+            toast.success(`Se eliminaron ${deletedCount} productos correctamente.`);
+        } catch (error) {
+            console.error("Error deleting all products:", error);
+            toast.error(getFriendlyErrorMessage(error, "eliminar todo el inventario"));
+            throw error;
+        }
+    },
+
     // Helper: Fetch Raw Data from Sheet (Shared)
     fetchSheetData: async () => {
         // Ensure settings are loaded
@@ -228,27 +267,40 @@ export const useProductStore = create((set, get) => ({
             const sheetRows = await get().fetchSheetData();
             const currentProducts = get().products;
 
-            // Map current SKUs for O(1) lookup
-            const localSkus = new Set(
+            // Map current EANs/SKUs for O(1) lookup
+            const localEans = new Set(
                 currentProducts
                     .map(p => p.sku?.toString().trim())
-                    .filter(sku => sku)
+                    .filter(ean => ean)
             );
 
             const missing = [];
 
             sheetRows.forEach(row => {
-                const sku = row[0] ? row[0].toString().trim() : '';
+                // A: EAN, B: Title, C: Category, D: Price
+                const ean = row[0] ? row[0].toString().trim() : '';
                 const name = row[1] ? row[1].toString().trim() : '';
-                const price = row[2] ? row[2].toString().trim() : '';
+                const category = row[2] ? row[2].toString().trim().toUpperCase() : ''; // Col C is index 2
+                const price = row[3] ? row[3].toString().trim() : ''; // Col D is index 3
 
-                // Filter by SKU prefix (Games only)
-                const allowedPrefixes = ['PS', 'NSW', 'SW2'];
-                const isGame = allowedPrefixes.some(prefix => sku.toUpperCase().startsWith(prefix));
+                // Validation: Must have EAN and Name. 
+                // Ignore empty rows or header rows
+                const isHeader = ean.toLowerCase() === 'ean' || name.toLowerCase().includes('titulo');
 
-                // If SKU exists, is valid game prefix, and NOT in local DB
-                if (sku && isGame && !localSkus.has(sku)) {
-                    missing.push({ sku, name, price });
+                if (ean && name && !isHeader && !localEans.has(ean)) {
+                    // Map Category to Console ID
+                    let consoleId = '';
+                    if (category.includes('PS5')) consoleId = 'ps5';
+                    else if (category.includes('PS4')) consoleId = 'ps4';
+                    else if (category.includes('NSW') || category.includes('SWITCH')) consoleId = 'nsw';
+
+                    missing.push({
+                        sku: ean, // EAN stored in sku field
+                        name,
+                        price,
+                        console: consoleId,
+                        categoryRaw: category
+                    });
                 }
             });
 
@@ -284,23 +336,20 @@ export const useProductStore = create((set, get) => ({
                     skipEmptyLines: true,
                     complete: async (results) => {
                         const sheetData = results.data;
-                        let updatedBySku = 0;
-                        let updatedByName = 0;
+                        let updatedByEan = 0;
                         let failedCount = 0;
                         let totalUpdated = 0;
 
                         // 1. OPTIMIZATION: Indexing the CSV Data for O(1) Lookup
-                        // skuMap: Key = SKU (clean), Value = Row Data
-                        // nameMap: Key = Name (lowercase), Value = Row Data
-                        const skuMap = new Map();
-                        const nameMap = new Map();
+                        // eanMap: Key = EAN (clean), Value = Row Data
+                        const eanMap = new Map();
 
                         sheetData.forEach(row => {
-                            const rawSku = row[0] ? row[0].toString().trim() : '';
-                            const rawName = row[1] ? row[1].toString().trim().toLowerCase() : '';
+                            // A: EAN, B: Title, C: Category, D: Price
+                            const rawEan = row[0] ? row[0].toString().trim() : '';
+                            const isHeader = rawEan.toLowerCase() === 'ean';
 
-                            if (rawSku) skuMap.set(rawSku, row);
-                            if (rawName && !nameMap.has(rawName)) nameMap.set(rawName, row);
+                            if (rawEan && !isHeader) eanMap.set(rawEan, row);
                         });
 
                         // 2. Prepare Updates
@@ -309,40 +358,26 @@ export const useProductStore = create((set, get) => ({
 
                         updatedProductsState.forEach((product, index) => {
                             let matchedRow = null;
-                            let matchType = null;
                             let newCost = 0;
-                            let newFinalPrice = 0;
 
-                            // 1. SKU Lookup (O(1))
+                            // 1. EAN Lookup (O(1)) - Using 'sku' field to store EAN
                             if (product.sku && product.sku.trim() !== '') {
-                                const cleanSku = product.sku.trim();
-                                if (skuMap.has(cleanSku)) {
-                                    matchedRow = skuMap.get(cleanSku);
-                                    matchType = 'SKU';
-                                }
-                            }
-
-                            // 2. Name Lookup (O(1)) - Fallback
-                            if (!matchedRow) {
-                                const searchName = (product.supplierName || product.title || '').trim().toLowerCase();
-                                if (nameMap.has(searchName)) {
-                                    matchedRow = nameMap.get(searchName);
-                                    matchType = 'NAME';
+                                const cleanEan = product.sku.trim();
+                                if (eanMap.has(cleanEan)) {
+                                    matchedRow = eanMap.get(cleanEan);
                                 }
                             }
 
                             // Process Match
                             if (matchedRow) {
-                                // Cleaning: Index 2 = Cost
-                                const rawPrice = matchedRow[2] ? matchedRow[2].toString() : '';
+                                // Cleaning: Index 3 = Cost (Col D)
+                                const rawPrice = matchedRow[3] ? matchedRow[3].toString() : '';
                                 const cleanPrice = rawPrice.replace(/[$. ]/g, '').replace(',', '.').trim();
                                 const csvPrice = parseFloat(cleanPrice);
 
                                 if (!isNaN(csvPrice) && csvPrice > 0) {
                                     newCost = csvPrice;
-
-                                    if (matchType === 'SKU') updatedBySku++;
-                                    if (matchType === 'NAME') updatedByName++;
+                                    updatedByEan++;
 
                                     // CALCULATE FINAL PRICE
                                     const margin = (product.customMargin !== undefined && product.customMargin !== null)
@@ -425,11 +460,11 @@ export const useProductStore = create((set, get) => ({
                         // It's fine, next fetch will get it.
 
                         resolve({
-                            updated: updatedBySku + updatedByName,
+                            updated: updatedByEan,
                             total: sheetData.length,
                             details: {
-                                bySku: updatedBySku,
-                                byName: updatedByName,
+                                bySku: updatedByEan,
+                                byName: 0, // Disabled name matching for EAN mode
                                 failed: failedCount
                             }
                         });
