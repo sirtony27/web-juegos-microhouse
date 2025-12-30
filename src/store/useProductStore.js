@@ -517,22 +517,15 @@ export const useProductStore = create((set, get) => ({
                 chunk.forEach(product => {
                     const docRef = doc(collectionRef);
 
-                    // 0. Convert Supplier Price (USD) to Cost (ARS)
-                    // product.costPrice comes from AuditInventory.jsx.
-                    // IMPORTANT: AuditInventory usually passes the RAW sheet price (USD).
-                    // So we must convert it here OR in AuditInventory. 
-                    // Let's do it here for consistency with "Sync".
-                    const costInUSD = parseFloat(product.costPrice) || 0;
-                    const costInARS = costInUSD * validExchangeRate;
-
                     // 1. Calculate Price
                     const margin = product.customMargin || globalMargin;
                     const { basePrice, finalPrice } = calculateProductPrice(
-                        costInARS,
+                        product.costPrice,
                         margin,
                         product.discountPercentage || 0,
                         settings,
-                        product.manualPrice
+                        product.manualPrice,
+                        product.currency || 'ARS'
                     );
 
                     // 2. Slug
@@ -543,7 +536,8 @@ export const useProductStore = create((set, get) => ({
                         title: product.title,
                         supplierName: product.supplierName || product.title,
                         sku: product.sku || '',
-                        costPrice: costInARS, // Store in ARS
+                        costPrice: parseFloat(product.costPrice) || 0,
+                        currency: product.currency || 'ARS',
                         price: finalPrice,
                         basePrice: basePrice,
                         manualPrice: product.manualPrice || '',
