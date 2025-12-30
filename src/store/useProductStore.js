@@ -431,6 +431,24 @@ export const useProductStore = create((set, get) => ({
                                 } else {
                                     failedCount++; // Found but invalid price
                                 }
+                            } else {
+                                // NOT FOUND IN SHEET (Provider removed it) => SET STOCK = FALSE
+                                // Only update if currently in stock to save writes/reads
+                                if (product.stock === true) {
+                                    const docRef = doc(db, "products", product.id);
+                                    updatesToCommit.push({
+                                        ref: docRef,
+                                        data: {
+                                            stock: false, // Mark as Out of Stock
+                                            lastUpdated: new Date()
+                                        }
+                                    });
+
+                                    updatedProductsState[index] = {
+                                        ...product,
+                                        stock: false
+                                    };
+                                }
                             }
                         });
 
