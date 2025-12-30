@@ -386,44 +386,38 @@ export const useProductStore = create((set, get) => ({
                                 const csvPriceUSD = parseFloat(cleanPrice);
 
                                 if (!isNaN(csvPriceUSD) && csvPriceUSD > 0) {
-                                    // CONVERT USD -> ARS
-                                    newCost = csvPriceUSD * validExchangeRate;
+                                    // SMART INFERENCE: If price < 2000, assume USD (matches Bulk Import logic)
+                                    const isUSD = csvPriceUSD < 2000;
+                                    const currency = isUSD ? 'USD' : 'ARS';
+                                    const costToStore = csvPriceUSD; // Store Raw Value
 
                                     updatedByEan++;
 
-                                    // CALCULATE FINAL PRICE
+                                    // CALCULATE FINAL PRICE CENTRALIZED
                                     const margin = (product.customMargin !== undefined && product.customMargin !== null)
                                         ? parseFloat(product.customMargin)
                                         : parseFloat(globalMargin);
 
-                                    let basePrice = newCost * (1 + (margin / 100));
-
-                                    // Apply VAT if enabled
-                                    const applyVat = product.applyVat ?? enableVatGlobal;
-                                    if (applyVat) {
-                                        basePrice = basePrice * (1 + (parseFloat(vatRate) / 100));
-                                    }
-
-                                    // Round Base Price
-                                    basePrice = Math.ceil(basePrice / 100) * 100;
-
-                                    // Apply Discount if exists
-                                    let finalPrice = basePrice;
-                                    if (product.discountPercentage && product.discountPercentage > 0) {
-                                        const discountFactor = 1 - (parseFloat(product.discountPercentage) / 100);
-                                        finalPrice = basePrice * discountFactor;
-                                        // Round again after discount
-                                        finalPrice = Math.ceil(finalPrice / 100) * 100;
-                                    }
+                                    const { basePrice, finalPrice } = calculateProductPrice(
+                                        costToStore,
+                                        margin,
+                                        product.discountPercentage || 0,
+                                        settings,
+                                        product.manualPrice,
+                                        currency // PASS CURRENCY!
+                                    );
 
                                     // Add to batch operations queue
                                     const docRef = doc(db, "products", product.id);
                                     updatesToCommit.push({
                                         ref: docRef,
                                         data: {
-                                            costPrice: newCost,
-                                            price: finalPrice, // This is the effective selling price
-                                            basePrice: basePrice // We store the price BEFORE discount to show strikethrough
+                                            costPrice: costToStore,
+                                            currency: currency, // Persist inferred currency
+                                            price: finalPrice,
+                                            basePrice: basePrice,
+                                            stock: true, // Re-enable stock
+                                            lastUpdated: new Date()
                                         }
                                     });
 
