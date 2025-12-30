@@ -528,18 +528,23 @@ const AuditInventory = () => {
                                         <td className="p-4 font-mono text-xs font-bold text-gray-500">{item.sku}</td>
                                         <td className="p-4 text-xs font-bold text-gray-400 uppercase">
                                             {/* Show mapped console name if possible, else raw */}
-                                            {detectConsoleId(item.sku) ? (
-                                                <span className={`px-2 py-1 rounded-md text-white text-[10px] ${detectConsoleId(item.sku) === 'ps5' ? 'bg-blue-600' :
-                                                    detectConsoleId(item.sku) === 'ps4' ? 'bg-blue-400' :
-                                                        detectConsoleId(item.sku) === 'nsw' ? 'bg-red-500' : 'bg-gray-400'
-                                                    }`}>
-                                                    {detectConsoleId(item.sku) === 'ps5' ? 'PS5' :
-                                                        detectConsoleId(item.sku) === 'ps4' ? 'PS4' :
-                                                            detectConsoleId(item.sku) === 'nsw' ? 'SWITCH' : item.categoryRaw}
-                                                </span>
-                                            ) : (
-                                                item.categoryRaw || '-'
-                                            )}
+                                            {(() => {
+                                                const effectiveConsole = item.console || detectConsoleId(item.sku);
+                                                if (effectiveConsole) {
+                                                    return (
+                                                        <span className={`px-2 py-1 rounded-md text-white text-[10px] ${effectiveConsole === 'ps5' ? 'bg-blue-600' :
+                                                                effectiveConsole === 'ps4' ? 'bg-blue-400' :
+                                                                    effectiveConsole === 'nsw' ? 'bg-red-500' : 'bg-gray-400'
+                                                            }`}>
+                                                            {effectiveConsole === 'ps5' ? 'PS5' :
+                                                                effectiveConsole === 'ps4' ? 'PS4' :
+                                                                    effectiveConsole === 'nsw' ? 'SWITCH' : item.categoryRaw}
+                                                        </span>
+                                                    );
+                                                } else {
+                                                    return item.categoryRaw || '-';
+                                                }
+                                            })()}
                                         </td>
                                         <td className="p-4 font-medium text-gray-800">{formatTitle(item.name)}</td>
                                         <td className="p-4">
