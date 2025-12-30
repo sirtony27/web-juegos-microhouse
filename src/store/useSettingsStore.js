@@ -11,6 +11,7 @@ export const useSettingsStore = create((set) => ({
         enableVatGlobal: false,
         exchangeRate: 1200, // Default manual rate
         autoExchangeRate: false,
+        autoExchangeSource: 'blue', // Default source
         lastExchangeUpdate: null
     },
     loading: false,
@@ -32,6 +33,7 @@ export const useSettingsStore = create((set) => ({
                     enableVatGlobal: false,
                     exchangeRate: 1200,
                     autoExchangeRate: false,
+                    autoExchangeSource: 'blue',
                     lastExchangeUpdate: null
                 };
                 await setDoc(docRef, defaultSettings);

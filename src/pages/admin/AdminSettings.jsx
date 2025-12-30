@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../../store/useSettingsStore'; // Changed from useConfigStore
 import { useProductStore } from '../../store/useProductStore';
 import ConsoleManager from '../../components/admin/ConsoleManager';
-import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings, RefreshCw, Trash } from 'lucide-react';
+import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings, RefreshCw, Trash, Loader, TrendingUp, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -17,13 +17,25 @@ const AdminSettings = () => {
         sheetUrl: '',
         defaultMargin: 30,
         vatRate: 21,
-        enableVatGlobal: false
+        enableVatGlobal: false,
+        exchangeRate: 1200,
+        autoExchangeRate: false,
+        autoExchangeSource: 'blue', // Default
+        rawgApiKey: '',
+        youtubeApiKey: '',
+        igdbClientId: '',
+        igdbClientSecret: ''
     });
 
     const [saved, setSaved] = useState(false);
     const [verifying, setVerifying] = useState(false);
     const [verifyStatus, setVerifyStatus] = useState(null); // 'success', 'error', null
     const [isTechUnlocked, setIsTechUnlocked] = useState(false); // Safety Lock
+
+    // Suggestions State
+    const [suggestionQuotes, setSuggestionQuotes] = useState([]);
+    const [loadingQuotes, setLoadingQuotes] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     useEffect(() => {
         fetchSettings(); // Force fetch on mount
@@ -41,10 +53,27 @@ const AdminSettings = () => {
                 igdbClientId: settings.igdbClientId || '',
                 igdbClientSecret: settings.igdbClientSecret || '',
                 exchangeRate: settings.exchangeRate || 1200,
-                autoExchangeRate: settings.autoExchangeRate || false
+                autoExchangeRate: settings.autoExchangeRate || false,
+                autoExchangeSource: settings.autoExchangeSource || 'blue'
             });
         }
     }, [settings]);
+
+    // Fetch all quotes for suggestions
+    const fetchDetailedQuotes = async () => {
+        setLoadingQuotes(true);
+        setShowSuggestions(true);
+        try {
+            const res = await fetch('https://dolarapi.com/v1/dolares');
+            const data = await res.json(); // Array of objects
+            setSuggestionQuotes(data);
+        } catch (error) {
+            console.error("Error fetching quotes:", error);
+            toast.error("Error al cargar cotizaciones");
+        } finally {
+            setLoadingQuotes(false);
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -113,7 +142,8 @@ const AdminSettings = () => {
             igdbClientId: formData.igdbClientId,
             igdbClientSecret: formData.igdbClientSecret,
             exchangeRate: formData.exchangeRate,
-            autoExchangeRate: formData.autoExchangeRate
+            autoExchangeRate: formData.autoExchangeRate,
+            autoExchangeSource: formData.autoExchangeSource
         });
 
         // Auto recalculate prices when global config changes
@@ -195,42 +225,78 @@ const AdminSettings = () => {
 
                             {/* Dollar Exchange Logic */}
                             <div className="mt-6 pt-6 border-t border-gray-100">
-                                <label className="block text-sm font-bold text-green-700 mb-4 flex items-center justify-between">
+                                <label className="block text-sm font-bold text-green-700 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="flex items-center gap-2">
                                         Cotización Dólar (USD)
                                         <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Base de Costo</span>
                                     </div>
 
-                                    {/* Auto-Update Toggle */}
-                                    <div className="flex items-center gap-3">
-                                        <span className={`text-xs font-semibold ${formData.autoExchangeRate ? 'text-blue-600' : 'text-gray-400'}`}>
-                                            Sync Automática (Dólar Blue)
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={async () => {
-                                                const newValue = !formData.autoExchangeRate;
-                                                setFormData(prev => ({ ...prev, autoExchangeRate: newValue }));
+                                    {/* Auto-Update Toggle & Source Selector */}
+                                    <div className="flex items-center gap-4">
+                                        {formData.autoExchangeRate && (
+                                            <select
+                                                name="autoExchangeSource"
+                                                value={formData.autoExchangeSource}
+                                                onChange={async (e) => {
+                                                    const newSource = e.target.value;
+                                                    setFormData(prev => ({ ...prev, autoExchangeSource: newSource }));
 
-                                                if (newValue) {
-                                                    // Trigger Auto-Fetch immediately
+                                                    // Trigger Fetch for new source
                                                     try {
-                                                        const res = await fetch('https://dolarapi.com/v1/dolares/blue');
+                                                        toast.message(`Sincronizando Dólar ${newSource}...`);
+                                                        const res = await fetch(`https://dolarapi.com/v1/dolares/${newSource}`);
                                                         const data = await res.json();
                                                         if (data && data.venta) {
-                                                            setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeRate: true }));
-                                                            toast.success(`Cotización actualizada: $${data.venta} (DolarAPI)`);
+                                                            setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeSource: newSource }));
+                                                            toast.success(`Dólar ${newSource} actualizado: $${data.venta}`);
                                                         }
                                                     } catch (error) {
-                                                        toast.error("Error al obtener cotización automática");
-                                                        console.error(error);
+                                                        toast.error("Error al obtener cotización");
                                                     }
-                                                }
-                                            }}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.autoExchangeRate ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                        >
-                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoExchangeRate ? 'translate-x-6' : 'translate-x-1'}`} />
-                                        </button>
+                                                }}
+                                                className="text-xs font-bold text-blue-700 bg-blue-50 border-blue-200 rounded-lg py-1 px-2 focus:ring-2 focus:ring-blue-500/50 outline-none uppercase"
+                                            >
+                                                <option value="oficial">Oficial</option>
+                                                <option value="blue">Blue</option>
+                                                <option value="bolsa">MEP (Bolsa)</option>
+                                                <option value="contadoconliqui">CCL</option>
+                                                <option value="tarjeta">Tarjeta</option>
+                                                <option value="mayorista">Mayorista</option>
+                                            </select>
+                                        )}
+
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-xs font-semibold ${formData.autoExchangeRate ? 'text-blue-600' : 'text-gray-400'}`}>
+                                                Sync Automática
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    const newValue = !formData.autoExchangeRate;
+                                                    setFormData(prev => ({ ...prev, autoExchangeRate: newValue }));
+
+                                                    if (newValue) {
+                                                        // Trigger Auto-Fetch immediately with current source
+                                                        const source = formData.autoExchangeSource || 'blue';
+                                                        try {
+                                                            toast.message(`Sincronizando Dólar ${source}...`);
+                                                            const res = await fetch(`https://dolarapi.com/v1/dolares/${source}`);
+                                                            const data = await res.json();
+                                                            if (data && data.venta) {
+                                                                setFormData(prev => ({ ...prev, exchangeRate: data.venta, autoExchangeRate: true }));
+                                                                toast.success(`Dólar ${source} actualizado: $${data.venta}`);
+                                                            }
+                                                        } catch (error) {
+                                                            toast.error("Error al obtener cotización automática");
+                                                            console.error(error);
+                                                        }
+                                                    }
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.autoExchangeRate ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoExchangeRate ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </label>
 
@@ -251,16 +317,26 @@ const AdminSettings = () => {
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">ARS</span>
                                     </div>
 
-                                    <div className="flex-1">
+                                    <div className="flex-1 w-full">
                                         {formData.autoExchangeRate ? (
                                             <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
                                                 <RefreshCw size={14} className="animate-spin-slow" />
-                                                <span>Sincronizando con <strong>DolarAPI.com</strong> (Venta Blue)</span>
+                                                <span>Sincronizando <strong>{formData.autoExchangeSource?.toUpperCase() || 'BLUE'}</strong> desde <strong>DolarAPI.com</strong></span>
                                             </div>
                                         ) : (
-                                            <p className="text-xs text-gray-500 leading-relaxed">
-                                                Ingresá el valor manualmente. Se usará para convertir los precios de la lista (USD) a pesos.
-                                            </p>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={fetchDetailedQuotes}
+                                                    className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-bold transition-colors border border-green-200"
+                                                >
+                                                    {loadingQuotes ? <Loader size={14} className="animate-spin" /> : <TrendingUp size={14} />}
+                                                    Ver Cotizaciones
+                                                </button>
+                                                <p className="text-xs text-gray-400 hidden md:block">
+                                                    Manual. Hacé clic para ver referencias.
+                                                </p>
+                                            </div>
                                         )}
                                         {settings.lastExchangeUpdate && (
                                             <p className="text-[10px] text-gray-400 mt-1">
@@ -269,6 +345,40 @@ const AdminSettings = () => {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Suggestions Grid */}
+                                {!formData.autoExchangeRate && showSuggestions && (
+                                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top-2">
+                                        {loadingQuotes ? (
+                                            <div className="col-span-full py-4 text-center text-gray-400 text-xs flex items-center justify-center gap-2">
+                                                <Loader size={14} className="animate-spin" /> Cargando mercado...
+                                            </div>
+                                        ) : (
+                                            suggestionQuotes.filter(q => ['Oficial', 'Blue', 'Bolsa', 'Tarjeta'].includes(q.nombre)).map((quote, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData(prev => ({ ...prev, exchangeRate: quote.venta }));
+                                                        toast.success(`Aplicado Dólar ${quote.nombre}: $${quote.venta}`);
+                                                    }}
+                                                    className="group text-left p-3 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all active:scale-95 bg-white shadow-sm"
+                                                >
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{quote.nombre}</span>
+                                                        <Coins size={12} className="text-gray-300 group-hover:text-green-500" />
+                                                    </div>
+                                                    <div className="font-mono text-lg font-bold text-gray-800 group-hover:text-green-700">
+                                                        ${quote.venta}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 mt-1">
+                                                        Compra: ${quote.compra}
+                                                    </div>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col gap-4">

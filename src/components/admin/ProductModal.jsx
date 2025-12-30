@@ -32,9 +32,13 @@ const GENRE_TRANSLATION = {
 };
 
 const ProductModal = ({ isOpen, onClose, productToEdit }) => {
-    const { register, handleSubmit, reset, setValue, watch } = useForm();
+    const { register, handleSubmit, reset, setValue, watch, getValues } = useForm();
+    const { settings } = useSettingsStore();
     // Watch values for live preview
     const watchedValues = watch();
+
+    // Currency State for Input Helper
+    const [currency, setCurrency] = useState('ARS');
 
     // Live Price Calculation
     const getLivePrice = () => {
@@ -43,32 +47,63 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
         const discount = parseFloat(watchedValues.discountPercentage) || 0;
         const manual = parseFloat(watchedValues.manualPrice) || 0;
 
-        // We can't easily access global settings here without subscribing to the store directly
-        // or passing them in. For now, let's assume global margin if custom is empty.
-        // Actually, we can fetch them from the store hook.
-        const { settings } = useSettingsStore(); // This hook usage inside render is fine in Zustand
+        const exRate = parseFloat(settings?.exchangeRate) || 1200;
 
-        let basePrice = 0;
+        let breakdown = {
+            currency: currency,
+            exchangeRate: exRate,
+            costInput: cost,
+            costARS: cost,
+            marginPercent: (!isNaN(margin)) ? margin : (parseFloat(settings?.globalMargin) || 30),
+            marginVal: 0,
+            vatVal: 0,
+            manualUsed: false,
+            basePrice: 0,
+            basePriceRounded: 0,
+            discountVal: 0,
+            final: 0
+        };
+
+        // Convert if needed
+        if (currency === 'USD') {
+            breakdown.costARS = cost * exRate;
+        }
+
+        let baseCalculation = 0;
+
         if (manual > 0) {
-            basePrice = manual;
+            baseCalculation = manual;
+            breakdown.manualUsed = true;
+            breakdown.basePrice = manual;
         } else {
-            const validMargin = (!isNaN(margin)) ? margin : (parseFloat(settings?.globalMargin) || 30);
-            basePrice = cost * (1 + (validMargin / 100));
+            const marginAmount = breakdown.costARS * (breakdown.marginPercent / 100);
+            baseCalculation = breakdown.costARS + marginAmount;
+            breakdown.marginVal = marginAmount;
 
             if (settings?.enableVatGlobal) {
-                basePrice = basePrice * (1 + (parseFloat(settings?.vatRate || 21) / 100));
+                const vatAmount = baseCalculation * (parseFloat(settings?.vatRate || 21) / 100);
+                baseCalculation += vatAmount;
+                breakdown.vatVal = vatAmount;
             }
+            breakdown.basePrice = baseCalculation;
         }
 
-        basePrice = Math.ceil(basePrice / 100) * 100;
+        // Rounding logic matches previous behavior
+        const roundedBase = Math.ceil(baseCalculation / 100) * 100;
+        breakdown.basePriceRounded = roundedBase;
 
-        let finalPrice = basePrice;
+        // Discount
+        let finalPrice = roundedBase;
         if (discount > 0) {
-            finalPrice = basePrice * (1 - (discount / 100));
-            finalPrice = Math.ceil(finalPrice / 100) * 100;
+            const discountAmount = roundedBase * (discount / 100);
+            finalPrice = roundedBase - discountAmount;
+            breakdown.discountVal = discountAmount;
         }
 
-        return { basePrice, finalPrice };
+        finalPrice = Math.ceil(finalPrice / 100) * 100;
+        breakdown.final = finalPrice;
+
+        return breakdown;
     };
 
     const livePrice = getLivePrice();
@@ -108,25 +143,7 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                 const translatedGenres = (details.genres || []).map(g => GENRE_TRANSLATION[g] || g);
 
                 // Update Form
-                setValue('title', details.title || watch('title')); // Keep existing if empty? No, overwrite is the goal usually. Let's overwrite.
-                setValue('title', details.name); // igdb returns 'name'? getGameDetails uses 'name' in cached payload? check gameService.
-                // gameService getGameDetails returns: { description, website, rating, released, background_image, trailer, genres, platforms }
-                // Ah, it doesn't explicitly return 'name' in the final object, only in search.
-                // Wait, looking at gameService line 155: fields name... but line 184 finalData: doesn't include 'name' explicitly?
-                // Actually it maps `data.name` is unused? 
-                // Let's check gameService.js from previous turn view.
-                // Line 184: finalData = { description, website... } -> It MISSES 'title' or 'name' in the object properly! 
-                // Wait, searchGame returns 'name'. getGameDetails returns enriched data.
-                // I rely on search result for name? Or I should ask getGameDetails to return name too.
-                // Let's assume I fix getGameDetails or carry it over. 
-                // Actually, `details` object in `gameService.js` is mapped from `data`. 
-                // I should assume the user clicked a search result which HAS the name. 
-                // So I can use the name from the search result list item, OR I rely on `getGameDetails` providing it.
-                // Let's update `setValue('title')` using the search result item if possible, or fix `gameService`?
-                // I cannot fix `gameService` easily right now without another step.
-                // I will use the name from the selected item in the list passed to this function?
-                // No, I only passed gameId.
-                // I will find the name from `curationResults`.
+                setValue('title', details.name || details.title || watch('title'));
 
                 const selectedResult = curationResults.find(r => r.id === gameId);
                 if (selectedResult) setValue('title', selectedResult.name);
@@ -183,6 +200,13 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                 } else {
                     setSelectedGenres([]);
                 }
+                // Determine currency heuristic
+                const initialCost = parseFloat(productToEdit.costPrice || 0);
+                if (initialCost > 0 && initialCost < 2000) {
+                    setCurrency('USD');
+                } else {
+                    setCurrency('ARS');
+                }
             } else {
                 reset({
                     sku: '',
@@ -201,6 +225,7 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                     costPrice: ''
                 });
                 setSelectedGenres([]);
+                setCurrency('ARS'); // Default to ARS for brand new unless user toggles
             }
         }
     }, [isOpen, productToEdit, reset, setValue, consoles]);
@@ -230,7 +255,10 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
             manualPrice: data.manualPrice ? parseFloat(data.manualPrice) : 0,
             customMargin: data.customMargin ? parseFloat(data.customMargin) : null,
             discountPercentage: data.discountPercentage ? parseFloat(data.discountPercentage) : 0,
-            costPrice: data.costPrice ? parseFloat(data.costPrice) : 0,
+            // Convert to ARS if currency was USD, so DB always has ARS
+            costPrice: currency === 'USD'
+                ? (parseFloat(data.costPrice || 0) * (parseFloat(settings?.exchangeRate) || 1200))
+                : (data.costPrice ? parseFloat(data.costPrice) : 0),
             stock: data.stock === 'true' || data.stock === true,
             trailerId: extractYoutubeId(data.trailerUrl),
             // Use local state for tags to ensure pills selection is respected
@@ -448,15 +476,31 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                                     {/* Row 1: Cost & Margin */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className={labelClasses}>Costo (Prov.)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                                <input type="number" {...register('costPrice')} className={`${inputClasses} pl-7`} placeholder="0" />
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className={labelClasses}>Costo (Prov.)</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCurrency(prev => prev === 'USD' ? 'ARS' : 'USD')}
+                                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${currency === 'USD' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
+                                                >
+                                                    {currency}
+                                                </button>
+                                            </div>
+                                            <div className="flex rounded-md shadow-sm">
+                                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
+                                                    $
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    {...register('costPrice')}
+                                                    className={`${inputClasses} flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border-gray-300 focus:ring-brand-dark focus:border-brand-dark font-mono font-bold`}
+                                                    placeholder="0.00"
+                                                />
                                             </div>
                                         </div>
                                         <div>
                                             <label className={labelClasses}>Margen (%)</label>
-                                            <input type="number" step="0.1" {...register('customMargin')} className={inputClasses} placeholder="Global (30%)" />
+                                            <input type="number" step="0.1" {...register('customMargin')} className={inputClasses} placeholder={`Global (${settings?.globalMargin || 30}%)`} />
                                         </div>
                                     </div>
 
@@ -464,9 +508,16 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className={labelClasses}>Precio Manual</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                                <input type="number" {...register('manualPrice')} className={`${inputClasses} pl-7 bg-yellow-50 border-yellow-200`} placeholder="Opcional" />
+                                            <div className="flex rounded-md shadow-sm">
+                                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 font-bold text-sm">
+                                                    $
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    {...register('manualPrice')}
+                                                    className={`${inputClasses} flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border-gray-300 focus:ring-brand-dark focus:border-brand-dark font-mono font-bold bg-yellow-50`}
+                                                    placeholder="Opcional"
+                                                />
                                             </div>
                                             <p className="text-[10px] text-gray-400 mt-1">Sobrescribe costo+margen</p>
                                         </div>
@@ -477,17 +528,63 @@ const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                                         </div>
                                     </div>
 
-                                    {/* Preview Box */}
-                                    <div className="mt-4 pt-4 border-t border-gray-200/50 flex flex-col gap-1 items-end">
-                                        <div className="text-xs text-gray-500">Precio Final Calculado:</div>
-                                        <div className="flex items-baseline gap-2">
-                                            {watchedValues.discountPercentage > 0 && (
-                                                <span className="text-sm text-gray-400 line-through decoration-1">
-                                                    ${livePrice.basePrice.toLocaleString()}
-                                                </span>
-                                            )}
+                                    {/* Price Breakdown */}
+                                    <div className="mt-4 pt-4 border-t border-gray-200/50 flex flex-col gap-1">
+
+                                        {/* Standard Calculation (Only if Manual not used) */}
+                                        {!livePrice.manualUsed && (
+                                            <>
+                                                {livePrice.currency === 'USD' && (
+                                                    <div className="flex justify-between text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded mb-1">
+                                                        <span>Conv: ${livePrice.costInput} USD x {livePrice.exchangeRate}</span>
+                                                        <span>= ${livePrice.costARS.toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between text-[11px] text-gray-500">
+                                                    <span>Costo Base {livePrice.currency === 'USD' ? 'ARS' : ''}</span>
+                                                    <span>${Math.round(livePrice.costARS).toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[11px] text-gray-500">
+                                                    <span>Margen ({livePrice.marginPercent}%)</span>
+                                                    <span className="text-green-600">+${Math.round(livePrice.marginVal).toLocaleString()}</span>
+                                                </div>
+                                                {livePrice.vatVal > 0 && (
+                                                    <div className="flex justify-between text-[11px] text-gray-500">
+                                                        <span>IVA (Global)</span>
+                                                        <span className="text-orange-600">+${Math.round(livePrice.vatVal).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                <div className="my-1 border-t border-dashed border-gray-200"></div>
+                                                {livePrice.basePriceRounded !== Math.round(livePrice.basePrice) && (
+                                                    <div className="flex justify-between text-[10px] text-gray-400 italic">
+                                                        <span>Redondeo (a 100)</span>
+                                                        <span>${Math.round(livePrice.basePrice).toLocaleString()} ➝ ${livePrice.basePriceRounded.toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* Manual Override Indicator */}
+                                        {livePrice.manualUsed && (
+                                            <div className="flex justify-between text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded mb-2 font-bold">
+                                                <span>Precio Manual Definido</span>
+                                                <span>${livePrice.priceBeforeDiscount ? livePrice.priceBeforeDiscount.toLocaleString() : livePrice.basePrice.toLocaleString()}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Discount */}
+                                        {livePrice.discountVal > 0 && (
+                                            <div className="flex justify-between text-[11px] text-red-500 font-medium">
+                                                <span>Descuento</span>
+                                                <span>-${Math.round(livePrice.discountVal).toLocaleString()}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Final Price */}
+                                        <div className="flex justify-between items-end mt-2 pt-2 border-t border-gray-200">
+                                            <span className="text-xs font-bold text-gray-700">Precio Final</span>
                                             <span className="text-2xl font-bold text-brand-dark">
-                                                ${livePrice.finalPrice.toLocaleString()}
+                                                ${livePrice.final.toLocaleString()}
                                             </span>
                                         </div>
                                     </div>

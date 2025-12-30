@@ -292,6 +292,7 @@ export const useProductStore = create((set, get) => ({
                     let consoleId = '';
                     if (category.includes('PS5')) consoleId = 'ps5';
                     else if (category.includes('PS4')) consoleId = 'ps4';
+                    else if (category.includes('NSW2') || category.includes('SWITCH 2') || category.includes('SW2')) consoleId = 'nsw2';
                     else if (category.includes('NSW') || category.includes('SWITCH')) consoleId = 'nsw';
 
                     missing.push({

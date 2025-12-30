@@ -327,7 +327,24 @@ const AuditInventory = () => {
     };
 
     const handleAdd = (item) => {
-        const consoleId = item.console || detectConsoleId(item.sku);
+        const logicalConsoleId = item.console || detectConsoleId(item.sku);
+
+        // Resolve Real DB ID
+        let realConsoleId = '';
+        const targetName =
+            logicalConsoleId === 'ps5' ? 'PlayStation 5' :
+                logicalConsoleId === 'ps4' ? 'PlayStation 4' :
+                    logicalConsoleId === 'nsw' ? 'Nintendo Switch' :
+                        logicalConsoleId === 'nsw2' ? 'Nintendo Switch 2' : '';
+
+        if (targetName) {
+            const found = consoles.find(c => c.name.toLowerCase() === targetName.toLowerCase());
+            if (found) realConsoleId = found.id;
+        }
+
+        // Fallback or Active
+        if (!realConsoleId) realConsoleId = consoles.find(c => c.active)?.id || '';
+
         const suggested = item._suggestedData || {};
 
         let trailerUrl = suggested.trailer || '';
@@ -340,7 +357,7 @@ const AuditInventory = () => {
             supplierName: item.name,
             costPrice: parseFloat(item.price.replace(/[$. ]/g, '').replace(',', '.')) || 0,
             stock: true,
-            console: consoleId,
+            console: realConsoleId,
             manualPrice: '',
             // Pre-fill from suggested data
             image: suggested.background_image || '',
@@ -375,7 +392,7 @@ const AuditInventory = () => {
         if (selectedConsoleFilter === 'ALL') matchesConsole = true;
         else {
             if (selectedConsoleFilter === 'PS') matchesConsole = item.console === 'ps5' || item.console === 'ps4';
-            if (selectedConsoleFilter === 'NSW') matchesConsole = item.console === 'nsw';
+            if (selectedConsoleFilter === 'NSW') matchesConsole = item.console === 'nsw' || item.console === 'nsw2';
         }
 
         // 2. Search Filter
@@ -533,12 +550,14 @@ const AuditInventory = () => {
                                                 if (effectiveConsole) {
                                                     return (
                                                         <span className={`px-2 py-1 rounded-md text-white text-[10px] ${effectiveConsole === 'ps5' ? 'bg-blue-600' :
-                                                                effectiveConsole === 'ps4' ? 'bg-blue-400' :
+                                                            effectiveConsole === 'ps4' ? 'bg-blue-400' :
+                                                                effectiveConsole === 'nsw2' ? 'bg-red-700' :
                                                                     effectiveConsole === 'nsw' ? 'bg-red-500' : 'bg-gray-400'
                                                             }`}>
                                                             {effectiveConsole === 'ps5' ? 'PS5' :
                                                                 effectiveConsole === 'ps4' ? 'PS4' :
-                                                                    effectiveConsole === 'nsw' ? 'SWITCH' : item.categoryRaw}
+                                                                    effectiveConsole === 'nsw2' ? 'SWITCH 2' :
+                                                                        effectiveConsole === 'nsw' ? 'SWITCH' : item.categoryRaw}
                                                         </span>
                                                     );
                                                 } else {
