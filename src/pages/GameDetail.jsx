@@ -151,7 +151,6 @@ const GameDetail = () => {
                                 alt={game.title}
                                 className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${!game.stock ? 'grayscale opacity-50' : ''}`}
                                 priority={true}
-                                layoutId={`product-image-${game.id}`}
                             />
                             {!game.stock && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
