@@ -9,6 +9,7 @@ const CatalogFilters = ({
     searchQuery, setSearchQuery,
     activeConsole, setActiveConsole,
     activeGenre, setActiveGenre,
+    sortBy, setSortBy,
     onClear,
     counts = {},
     availableGenres = []
