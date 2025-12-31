@@ -140,6 +140,10 @@ const Catalog = () => {
                 if (!game.title.toLowerCase().includes(query)) return false;
             }
             return true;
+        }).sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
         });
     }, [games, activeConsole, activeGenre, searchQuery]); // Direct dependency on searchQuery
 
