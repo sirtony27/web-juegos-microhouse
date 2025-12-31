@@ -109,6 +109,9 @@ const Catalog = () => {
     // Advanced Filtering Logic - Removed Debounce for Fluidity (assuming <2000 items is fast enough)
     // If we really need debounce, we should only debounce the *filtering*, not the input state.
     // But keeping it direct is usually best for "instant" feel unless dataset is huge.
+    const [sortBy, setSortBy] = useState('date'); // Default: Newest
+
+    // Advanced Filtering Logic
     const filteredGames = useMemo(() => {
         return games.filter(game => {
             if (game.isHidden) return false;
@@ -117,20 +120,16 @@ const Catalog = () => {
             if (activeConsole !== 'all') {
                 const gameConsoleId = (game.console || '').toLowerCase();
                 const targetConsoleId = activeConsole.toLowerCase();
-
-                // Flexible match: Exact ID match OR Name contains ID OR ID contains Name
                 if (gameConsoleId !== targetConsoleId) return false;
             }
 
             // 2. Genre Filter
             if (activeGenre) {
                 const gameTags = Array.isArray(game.tags) ? game.tags : [];
-                // Check if any of the game's tags (translated) matches the active genre
                 const hasMatchingGenre = gameTags.some(t => {
                     const translated = GENRE_TRANSLATIONS[t] || GENRE_TRANSLATIONS[t.trim()] || t;
                     return translated === activeGenre;
                 });
-
                 if (!hasMatchingGenre) return false;
             }
 
@@ -141,11 +140,19 @@ const Catalog = () => {
             }
             return true;
         }).sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
+            switch (sortBy) {
+                case 'name':
+                    return a.title.localeCompare(b.title);
+                case 'rating':
+                    return (b.rating || 0) - (a.rating || 0);
+                case 'date':
+                default:
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return dateB - dateA;
+            }
         });
-    }, [games, activeConsole, activeGenre, searchQuery]); // Direct dependency on searchQuery
+    }, [games, activeConsole, activeGenre, searchQuery, sortBy]);
 
     // Reset pagination when filters change
     useEffect(() => {
@@ -208,6 +215,8 @@ const Catalog = () => {
                     setActiveConsole={setActiveConsole}
                     activeGenre={activeGenre}
                     setActiveGenre={setActiveGenre}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
                     onClear={handleClearFilters}
                     counts={useMemo(() => {
                         const c = {};

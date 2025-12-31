@@ -127,23 +127,41 @@ const CatalogFilters = ({
                 </div>
             </div>
 
-            {/* Bottom Row: Genre Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                <button
-                    onClick={() => setActiveGenre(null)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${!activeGenre ? 'bg-brand-red text-white border-brand-red' : 'bg-brand-bg text-white/70 border-white/5 hover:border-white/20'}`}
-                >
-                    Todos los géneros
-                </button>
-                {displayGenres.map((genre) => (
-                    <button
-                        key={genre}
-                        onClick={() => setActiveGenre(genre === activeGenre ? null : genre)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${activeGenre === genre ? 'bg-brand-red text-white border-brand-red shadow-[0_0_10px_rgba(230,36,41,0.4)]' : 'bg-brand-bg text-white/70 border-white/5 hover:border-white/20'}`}
+            {/* Middle Row: Sort & Genres */}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-0">
+
+                {/* Sort By Dropdown */}
+                <div className="flex items-center gap-2 bg-brand-bg/50 border border-white/5 rounded-lg p-1 w-full md:w-auto">
+                    <span className="text-xs text-gray-500 pl-2 uppercase font-bold tracking-wider">Ordenar:</span>
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="bg-transparent text-white text-sm font-medium focus:outline-none p-1 cursor-pointer"
                     >
-                        {genre}
+                        <option value="date" className="bg-brand-surface text-gray-300">Más Recientes</option>
+                        <option value="name" className="bg-brand-surface text-gray-300">Nombre (A-Z)</option>
+                        <option value="rating" className="bg-brand-surface text-gray-300">Mejor Puntuados</option>
+                    </select>
+                </div>
+
+                {/* Genre Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 w-full md:w-auto justify-start md:justify-end">
+                    <button
+                        onClick={() => setActiveGenre(null)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${!activeGenre ? 'bg-brand-red text-white border-brand-red' : 'bg-brand-bg text-white/70 border-white/5 hover:border-white/20'}`}
+                    >
+                        Todos
                     </button>
-                ))}
+                    {displayGenres.map((genre) => (
+                        <button
+                            key={genre}
+                            onClick={() => setActiveGenre(genre === activeGenre ? null : genre)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${activeGenre === genre ? 'bg-brand-red text-white border-brand-red shadow-[0_0_10px_rgba(230,36,41,0.4)]' : 'bg-brand-bg text-white/70 border-white/5 hover:border-white/20'}`}
+                        >
+                            {genre}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Clear All Button (Only if filters active) */}
@@ -166,7 +184,7 @@ const CatalogFilters = ({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
 

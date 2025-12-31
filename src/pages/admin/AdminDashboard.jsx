@@ -48,7 +48,11 @@ const AdminDashboard = () => {
     const filteredProducts = products.filter(p =>
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    ).sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA; // Newest first
+    });
 
     const handleSync = async () => {
         setIsSyncing(true);
