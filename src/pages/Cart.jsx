@@ -6,6 +6,7 @@ import { Trash2, ShoppingBag, ArrowLeft, MessageCircle, Plus, Minus, ShieldCheck
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAnalytics } from '../hooks/useAnalytics';
+import FadeImage from '../components/ui/FadeImage';
 
 const Cart = () => {
     const { cart, removeFromCart, decrementQuantity, addToCart, getTotalPrice, clearCart } = useCartStore();
@@ -84,11 +85,10 @@ const Cart = () => {
                         >
                             {/* Image */}
                             <div className="w-20 h-24 md:w-28 md:h-36 flex-shrink-0 bg-gray-900 rounded-lg overflow-hidden shadow-md relative group-hover:shadow-lg transition-all">
-                                <img
+                                <FadeImage
                                     src={item.image}
                                     alt={item.title}
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    onError={(e) => e.target.style.display = 'none'}
                                 />
                             </div>
 

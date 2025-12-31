@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 import { useAnalytics } from '../hooks/useAnalytics';
 import { Helmet } from 'react-helmet-async';
+import FadeImage from '../components/ui/FadeImage';
 
 const GameDetail = () => {
     const { slug, console: consoleId } = useParams();
@@ -145,10 +146,12 @@ const GameDetail = () => {
                             className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 aspect-[3/4] group"
                             layoutId={`product-image-${game.id}`}
                         >
-                            <img
+                            <FadeImage
                                 src={game.image}
                                 alt={game.title}
                                 className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${!game.stock ? 'grayscale opacity-50' : ''}`}
+                                priority={true}
+                                layoutId={`product-image-${game.id}`}
                             />
                             {!game.stock && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">

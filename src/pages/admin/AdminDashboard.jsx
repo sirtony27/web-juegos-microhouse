@@ -7,6 +7,7 @@ import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, Do
 import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
 import AnalyticsDashboard from '../../components/admin/AnalyticsDashboard';
+import FadeImage from '../../components/ui/FadeImage';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -180,7 +181,7 @@ const AdminDashboard = () => {
                                     {filteredProducts.map(product => (
                                         <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="p-4 flex items-center gap-3">
-                                                <img
+                                                <FadeImage
                                                     src={product.image || 'https://placehold.co/40'}
                                                     alt={product.title}
                                                     className="w-10 h-10 rounded object-cover bg-gray-200"
