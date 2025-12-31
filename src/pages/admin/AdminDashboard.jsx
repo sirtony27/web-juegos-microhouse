@@ -12,12 +12,16 @@ import FadeImage from '../../components/ui/FadeImage';
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const { products, toggleVisibility, deleteProduct, syncPricesFromSheet } = useProductStore();
-    const { settings, fetchSettings } = useSettingsStore();
+    const { settings, fetchSettings, syncExchangeRate } = useSettingsStore(); // Added syncExchangeRate
     const { globalMargin } = settings;
     const logout = useAuthStore((state) => state.logout);
 
     useEffect(() => {
-        fetchSettings();
+        const load = async () => {
+            await fetchSettings();
+            syncExchangeRate(); // Silent check on mount
+        };
+        load();
     }, []);
 
     const [searchTerm, setSearchTerm] = useState('');
