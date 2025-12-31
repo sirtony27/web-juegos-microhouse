@@ -16,7 +16,7 @@ const GameDetail = () => {
     const { slug, console: consoleId } = useParams();
     const navigate = useNavigate();
     const addToCart = useCartStore((state) => state.addToCart);
-    const { trackProductView, trackAddToCart } = useAnalytics();
+    const { trackViewItem, trackAddToCart } = useAnalytics();
 
     const { products, loading } = useProductStore();
 
@@ -63,7 +63,7 @@ const GameDetail = () => {
 
     useEffect(() => {
         if (game) {
-            trackProductView(game.id);
+            trackViewItem(game);
         }
     }, [game]);
 
@@ -87,7 +87,7 @@ const GameDetail = () => {
     const handleAddToCart = () => {
         if (!game.stock) return;
         addToCart(game);
-        trackAddToCart(game.id);
+        trackAddToCart(game);
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 2000);
 

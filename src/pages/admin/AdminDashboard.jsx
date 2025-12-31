@@ -6,7 +6,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, DollarSign, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
-import AnalyticsCharts from '../../components/admin/AnalyticsCharts';
+import AnalyticsDashboard from '../../components/admin/AnalyticsDashboard';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -26,12 +26,12 @@ const AdminDashboard = () => {
     // Stale Price Logic
     const { daysSinceSync, isStale } = useMemo(() => {
         if (!settings.lastSync) return { daysSinceSync: -1, isStale: true };
-        
+
         const last = new Date(settings.lastSync);
         const now = new Date();
         const diffTime = Math.abs(now - last);
         const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
+
         return { daysSinceSync: days, isStale: days > 3 };
     }, [settings.lastSync]);
 
@@ -111,14 +111,14 @@ const AdminDashboard = () => {
                                 {daysSinceSync === -1 ? '¡Atención! Precios nunca sincronizados' : `¡Atención! Precios desactualizados (${daysSinceSync} días)`}
                             </h3>
                             <p className="text-amber-800 text-sm mt-1 leading-relaxed">
-                                {daysSinceSync === -1 
-                                    ? 'Es la primera vez que ingresas. Sincroniza ahora para cargar los precios bases.' 
+                                {daysSinceSync === -1
+                                    ? 'Es la primera vez que ingresas. Sincroniza ahora para cargar los precios bases.'
                                     : `La última actualización fue el ${new Date(settings.lastSync).toLocaleDateString()}. Los costos del proveedor podrían haber cambiado.`}
-                                <br className="hidden sm:block"/> Sincroniza ahora para evitar vender a pérdida.
+                                <br className="hidden sm:block" /> Sincroniza ahora para evitar vender a pérdida.
                             </p>
                         </div>
                     </div>
-                     <button
+                    <button
                         onClick={handleSync}
                         disabled={isSyncing}
                         className="w-full sm:w-auto px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition-colors whitespace-nowrap flex items-center justify-center gap-2"
@@ -136,7 +136,12 @@ const AdminDashboard = () => {
                 </div>
             )}
 
-            {/* Dashboard Content Grid */}
+            {/* NEW ANALYTICS DASHBOARD (Full Width) */}
+            <div className="mb-8">
+                <AnalyticsDashboard />
+            </div>
+
+            {/* Dashboard Content Grid (Filters & Table) */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px] gap-6 items-start">
 
                 {/* Left Column: Filters & Table */}
@@ -175,7 +180,11 @@ const AdminDashboard = () => {
                                     {filteredProducts.map(product => (
                                         <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="p-4 flex items-center gap-3">
-                                                <img src={product.image} alt="" className="w-10 h-10 rounded object-cover bg-gray-200" />
+                                                <img
+                                                    src={product.image || 'https://placehold.co/40'}
+                                                    alt={product.title}
+                                                    className="w-10 h-10 rounded object-cover bg-gray-200"
+                                                />
                                                 <div className="max-w-[150px] md:max-w-xs truncate">
                                                     <div className="font-semibold text-gray-800 truncate" title={product.title}>{product.title}</div>
                                                     <div className="text-xs text-gray-400 truncate">{product.supplierName}</div>
@@ -199,29 +208,14 @@ const AdminDashboard = () => {
                                                     {product.stock ? 'STOCK' : 'AGOTADO'}
                                                 </span>
                                             </td>
-                                            <td className="p-4">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        title="Ocultar/Mostrar"
-                                                        onClick={() => toggleVisibility(product.id)}
-                                                        className={`p-1.5 rounded hover:bg-gray-200 ${product.isHidden ? 'text-red-500' : 'text-gray-400'}`}
-                                                    >
+                                            <td className="p-4 text-center">
+                                                <div className="flex justify-center gap-2">
+                                                    <button onClick={() => openModal(product)} className="text-blue-600 hover:text-blue-800 p-1"><Edit size={18} /></button>
+                                                    <button onClick={() => toggleVisibility(product.id, product.isHidden)} className={`${product.isHidden ? 'text-gray-400' : 'text-green-600'} hover:opacity-80 p-1`}>
                                                         {product.isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
                                                     </button>
-                                                    <button
-                                                        onClick={() => openModal(product)}
-                                                        className="p-1.5 rounded hover:bg-blue-100 text-blue-600 hidden sm:block"
-                                                        title="Editar"
-                                                    >
-                                                        <Edit size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { if (window.confirm('Eliminar?')) deleteProduct(product.id) }}
-                                                        className="p-1.5 rounded hover:bg-red-100 text-red-600"
-                                                        title="Eliminar"
-                                                    >
-                                                        <Trash size={18} />
-                                                    </button>
+                                                    {/* Eliminar (protegido si se requiere confirmación masiva, pero individual aquí) */}
+                                                    <button onClick={() => { if (window.confirm('¿Eliminar?')) deleteProduct(product.id) }} className="text-red-500 hover:text-red-700 p-1"><Trash size={18} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -269,8 +263,8 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="pt-4 border-t border-gray-200">
-                        <h3 className="text-lg font-bold text-gray-700 mb-4 px-2">Métricas en Tiempo Real</h3>
-                        <AnalyticsCharts />
+                        <h3 className="text-lg font-bold text-gray-700 mb-4 px-2">Tips de Gestión</h3>
+                        {/* Old charts removed */}
 
                         <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100 mb-6">
                             <p className="text-xs text-blue-800">

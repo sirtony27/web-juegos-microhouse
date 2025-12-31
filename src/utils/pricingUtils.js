@@ -21,17 +21,42 @@ export const calculateProductPrice = (cost, customMargin, discountPercent, globa
         basePrice = parseFloat(useManualPrice);
     } else {
         const validCost = effectiveCost;
-        const validMargin = (customMargin !== undefined && customMargin !== null && customMargin !== '')
-            ? parseFloat(customMargin)
-            : parseFloat(globalMargin);
 
-        basePrice = validCost * (1 + (validMargin / 100));
+        // --- MARGIN LOGIC START ---
+        let marginToUse = parseFloat(globalMargin);
+
+        // Check if Custom Margin is set (Priority 1)
+        if (customMargin !== undefined && customMargin !== null && customMargin !== '') {
+            marginToUse = parseFloat(customMargin);
+        }
+        // Check if Tiered Margins are enabled (Priority 2)
+        else if (globalSettings.enableTieredMargins && Array.isArray(globalSettings.marginTiers) && globalSettings.marginTiers.length > 0) {
+            // Calculate Cost in USD for comparison (Tiers are always in USD)
+            let costForTierCheck = parseFloat(cost) || 0;
+            if (currency === 'ARS') {
+                // If cost is in ARS, convert back to USD approximately to check tier
+                // This handles cases where we only have ARS cost (rare now, but safely handled)
+                costForTierCheck = costForTierCheck / parseFloat(exchangeRate || 1);
+            }
+
+            // Find matching tier
+            // We assume tiers are: { maxPrice: 30, percentage: 50 }
+            // Finds the FIRST tier where cost <= maxPrice
+            // Finds the FIRST tier where cost <= maxPrice
+            const matchingTier = [...globalSettings.marginTiers]
+                .sort((a, b) => a.maxPrice - b.maxPrice)
+                .find(tier => costForTierCheck <= parseFloat(tier.maxPrice));
+
+            if (matchingTier) {
+                marginToUse = parseFloat(matchingTier.percentage);
+            }
+            // If no tier matches (e.g. cost > highest maxPrice), fall back to globalMargin
+        }
+        // --- MARGIN LOGIC END ---
+
+        basePrice = validCost * (1 + (marginToUse / 100));
 
         // Apply VAT logic
-        // We need to know if we should apply VAT. 
-        // In the store logic, we checked `product.applyVat`. 
-        // For simplicity in this helper, let's assume if enableVatGlobal is true, we apply it.
-        // Or we pass a flag `applyVat`.
         if (enableVatGlobal) {
             basePrice = basePrice * (1 + (parseFloat(vatRate) / 100));
         }

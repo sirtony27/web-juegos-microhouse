@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useSettingsStore } from '../../store/useSettingsStore'; // Changed from useConfigStore
 import { useProductStore } from '../../store/useProductStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { useConsoleStore } from '../../store/useConsoleStore';
+import { useAnalytics } from '../../hooks/useAnalytics';
 import ConsoleManager from '../../components/admin/ConsoleManager';
 import { Save, ArrowLeft, CheckCircle, XCircle, Globe, Settings, RefreshCw, Trash, Loader, TrendingUp, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
+import { calculateProductPrice } from '../../utils/pricingUtils';
 
 const AdminSettings = () => {
     const navigate = useNavigate();
     // Use Firestore Store
-    const { settings, fetchSettings, updateSettings } = useSettingsStore();
+    const { settings, fetchSettings, updateSettings, loading: settingsLoading } = useSettingsStore();
     const { recalculatePrices } = useProductStore();
 
     // Local state for form
@@ -27,7 +30,9 @@ const AdminSettings = () => {
         igdbClientSecret: ''
     });
 
+    // const { fetchSettings, updateSettings, settings, loading: settingsLoading } = useSettingsStore(); // Duplicate removed
     const [saved, setSaved] = useState(false);
+    const { resetAnalytics } = useAnalytics();
     const [verifying, setVerifying] = useState(false);
     const [verifyStatus, setVerifyStatus] = useState(null); // 'success', 'error', null
     const [isTechUnlocked, setIsTechUnlocked] = useState(false); // Safety Lock
@@ -36,6 +41,7 @@ const AdminSettings = () => {
     const [suggestionQuotes, setSuggestionQuotes] = useState([]);
     const [loadingQuotes, setLoadingQuotes] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [simulatedCost, setSimulatedCost] = useState(60);
 
     useEffect(() => {
         fetchSettings(); // Force fetch on mount
@@ -46,6 +52,8 @@ const AdminSettings = () => {
             setFormData({
                 sheetUrl: settings.sheetUrl || '',
                 defaultMargin: settings.globalMargin !== undefined ? settings.globalMargin : 30,
+                enableTieredMargins: settings.enableTieredMargins || false,
+                marginTiers: settings.marginTiers || [],
                 vatRate: settings.vatRate !== undefined ? settings.vatRate : 21,
                 enableVatGlobal: settings.enableVatGlobal || false,
                 rawgApiKey: settings.rawgApiKey || '',
@@ -143,7 +151,9 @@ const AdminSettings = () => {
             igdbClientSecret: formData.igdbClientSecret,
             exchangeRate: formData.exchangeRate,
             autoExchangeRate: formData.autoExchangeRate,
-            autoExchangeSource: formData.autoExchangeSource
+            autoExchangeSource: formData.autoExchangeSource,
+            enableTieredMargins: formData.enableTieredMargins,
+            marginTiers: formData.marginTiers
         });
 
         // Auto recalculate prices when global config changes
@@ -212,34 +222,129 @@ const AdminSettings = () => {
                                     {/* 1. Base Parameters */}
                                     <div className="space-y-6">
                                         <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                            1. Parámetros Base
+                                            1. Estrategia de Márgenes
                                         </h3>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-700 mb-2">Margen Global (%)</label>
-                                                <div className="relative group">
-                                                    <input
-                                                        type="number"
-                                                        name="defaultMargin"
-                                                        value={formData.defaultMargin}
-                                                        onChange={handleChange}
-                                                        className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                                                    />
-                                                    <span className="absolute right-3 top-2 text-gray-400 font-bold">%</span>
+
+                                        {/* Strategy Switch */}
+                                        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, enableTieredMargins: false })}
+                                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!formData.enableTieredMargins ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                            >
+                                                MARGEN FIJO
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, enableTieredMargins: true })}
+                                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${formData.enableTieredMargins ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                            >
+                                                ESCALONADO
+                                            </button>
+                                        </div>
+
+                                        {/* Global / Fallback Margin */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-2">
+                                                {formData.enableTieredMargins ? 'Margen por Defecto (Resto)' : 'Margen Global (%)'}
+                                            </label>
+                                            <div className="relative group">
+                                                <input
+                                                    type="number"
+                                                    name="defaultMargin"
+                                                    value={formData.defaultMargin}
+                                                    onChange={handleChange}
+                                                    className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                                                />
+                                                <span className="absolute right-3 top-2 text-gray-400 font-bold">%</span>
+                                            </div>
+                                            {formData.enableTieredMargins && (
+                                                <p className="text-[10px] text-gray-400 mt-1">Se aplica si no coincide ninguna regla.</p>
+                                            )}
+                                        </div>
+
+                                        {/* Tiered Rules Editor */}
+                                        {formData.enableTieredMargins && (
+                                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-xs font-bold text-gray-700">Reglas de Margen</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newTiers = [...(formData.marginTiers || []), { maxPrice: 60, percentage: 20 }];
+                                                            setFormData({ ...formData, marginTiers: newTiers });
+                                                        }}
+                                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded"
+                                                    >
+                                                        + AGREGAR REGLA
+                                                    </button>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    {(formData.marginTiers || []).map((tier, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100">
+                                                            <span className="text-[10px] font-bold text-gray-500 uppercase">Hasta</span>
+                                                            <div className="relative w-20">
+                                                                <span className="absolute left-2 top-1.5 text-gray-400 text-[10px]">$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    value={tier.maxPrice}
+                                                                    onChange={(e) => {
+                                                                        const newTiers = formData.marginTiers.map((t, i) =>
+                                                                            i === idx ? { ...t, maxPrice: e.target.value } : t
+                                                                        );
+                                                                        setFormData({ ...formData, marginTiers: newTiers });
+                                                                    }}
+                                                                    className="w-full pl-4 pr-1 py-1 text-xs font-bold bg-white border border-gray-200 rounded focus:border-indigo-500 outline-none"
+                                                                />
+                                                            </div>
+                                                            <span className="text-[10px] font-bold text-gray-500 uppercase">USD ➡</span>
+                                                            <div className="relative w-16">
+                                                                <input
+                                                                    type="number"
+                                                                    value={tier.percentage}
+                                                                    onChange={(e) => {
+                                                                        const newTiers = formData.marginTiers.map((t, i) =>
+                                                                            i === idx ? { ...t, percentage: e.target.value } : t
+                                                                        );
+                                                                        setFormData({ ...formData, marginTiers: newTiers });
+                                                                    }}
+                                                                    className="w-full pl-2 pr-4 py-1 text-xs font-bold bg-white border border-gray-200 rounded focus:border-indigo-500 outline-none"
+                                                                />
+                                                                <span className="absolute right-2 top-1.5 text-gray-400 text-[10px]">%</span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newTiers = formData.marginTiers.filter((_, i) => i !== idx);
+                                                                    setFormData({ ...formData, marginTiers: newTiers });
+                                                                }}
+                                                                className="ml-auto text-gray-400 hover:text-red-500 p-1"
+                                                            >
+                                                                <Trash size={12} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    {(formData.marginTiers || []).length === 0 && (
+                                                        <p className="text-center text-[10px] text-gray-400 py-2 border border-dashed border-gray-200 rounded-lg">
+                                                            Sin reglas. Usará el margen por defecto.
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-700 mb-2">Tasa IVA (%)</label>
-                                                <div className="relative group">
-                                                    <input
-                                                        type="number"
-                                                        name="vatRate"
-                                                        value={formData.vatRate}
-                                                        onChange={handleChange}
-                                                        className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                                                    />
-                                                    <span className="absolute right-3 top-2 text-gray-400 font-bold">%</span>
-                                                </div>
+                                        )}
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-2">Tasa IVA (%)</label>
+                                            <div className="relative group">
+                                                <input
+                                                    type="number"
+                                                    name="vatRate"
+                                                    value={formData.vatRate}
+                                                    onChange={handleChange}
+                                                    className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                                                />
+                                                <span className="absolute right-3 top-2 text-gray-400 font-bold">%</span>
                                             </div>
                                         </div>
                                     </div>
@@ -394,43 +499,98 @@ const AdminSettings = () => {
                                         </div>
 
                                         {/* Dynamic Calc */}
+                                        {/* Dynamic Calc */}
                                         <div className="space-y-3 font-mono text-sm">
-                                            <div className="flex justify-between items-center text-gray-500">
-                                                <span>Costo Input (USD)</span>
-                                                <span className="font-bold">60.00 USD</span>
-                                            </div>
+                                            {(() => {
+                                                // Prepare fake product and settings for calculation
+                                                const fakeCost = parseFloat(simulatedCost) || 0;
+                                                const fakeSettings = {
+                                                    globalMargin: formData.defaultMargin,
+                                                    vatRate: formData.vatRate,
+                                                    enableVatGlobal: formData.enableVatGlobal,
+                                                    exchangeRate: formData.exchangeRate,
+                                                    enableTieredMargins: formData.enableTieredMargins,
+                                                    marginTiers: formData.marginTiers
+                                                };
 
-                                            <div className="flex justify-between items-center text-gray-500 text-xs pl-4 border-l-2 border-gray-200">
-                                                <span>× Cotización</span>
-                                                <span>$ {formData.exchangeRate}</span>
-                                            </div>
+                                                const { basePrice, finalPrice } = calculateProductPrice(
+                                                    fakeCost,
+                                                    null, // No custom margin
+                                                    0, // No discount
+                                                    fakeSettings,
+                                                    0, // No manual price
+                                                    'USD' // Currency
+                                                );
 
-                                            <div className="flex justify-between items-center text-gray-800 font-bold bg-gray-50 p-2 rounded-lg">
-                                                <span>Base (ARS)</span>
-                                                <span>$ {(60 * formData.exchangeRate).toLocaleString('es-AR')}</span>
-                                            </div>
+                                                // Back-calculate components for visualization
+                                                const costInARS = fakeCost * formData.exchangeRate;
 
-                                            <div className="flex justify-between items-center text-green-600 text-xs pl-4">
-                                                <span>+ Margen ({formData.defaultMargin}%)</span>
-                                                <span>+ $ {(60 * formData.exchangeRate * (formData.defaultMargin / 100)).toLocaleString('es-AR')}</span>
-                                            </div>
+                                                // Re-derive margin to show the USER which one is being used
+                                                let usedMargin = parseFloat(formData.defaultMargin);
+                                                if (formData.enableTieredMargins && formData.marginTiers) {
+                                                    const matching = [...formData.marginTiers]
+                                                        .sort((a, b) => a.maxPrice - b.maxPrice)
+                                                        .find(t => fakeCost <= t.maxPrice);
+                                                    if (matching) usedMargin = parseFloat(matching.percentage);
+                                                }
 
-                                            <div className="flex justify-between items-center text-blue-600 text-xs pl-4">
-                                                <span>+ IVA ({formData.vatRate}%)</span>
-                                                <span>+ $ {(60 * formData.exchangeRate * (1 + formData.defaultMargin / 100) * (formData.vatRate / 100)).toLocaleString('es-AR')}</span>
-                                            </div>
+                                                const priceWithMargin = costInARS * (1 + (usedMargin / 100));
+                                                const vatAmount = formData.enableVatGlobal ? priceWithMargin * (formData.vatRate / 100) : 0;
 
-                                            <div className="pt-4 border-t border-gray-100 mt-4">
-                                                <div className="flex justify-between items-end">
-                                                    <span className="text-sm font-bold text-gray-400 uppercase">Precio Final</span>
-                                                    <span className="text-3xl font-bold text-brand-dark leading-none">
-                                                        $ {Math.round(60 * formData.exchangeRate * (1 + formData.defaultMargin / 100) * (1 + formData.vatRate / 100)).toLocaleString('es-AR')}
-                                                    </span>
-                                                </div>
-                                                <div className="text-right text-[10px] text-gray-400 mt-1">
-                                                    Ejemplo para un juego de 60 USD
-                                                </div>
-                                            </div>
+                                                return (
+                                                    <>
+                                                        <div className="flex justify-between items-center text-gray-500">
+                                                            <span>Costo Input (USD)</span>
+                                                            <div className="relative w-24">
+                                                                <input
+                                                                    type="number"
+                                                                    value={simulatedCost}
+                                                                    onChange={(e) => setSimulatedCost(e.target.value)}
+                                                                    className="w-full pl-6 pr-2 py-1 text-right font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded focus:border-green-500 outline-none"
+                                                                />
+                                                                <span className="absolute left-2 top-1.5 text-xs text-gray-400">$</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center text-gray-500 text-xs pl-4 border-l-2 border-gray-200">
+                                                            <span>× Cotización</span>
+                                                            <span>$ {formData.exchangeRate}</span>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center text-gray-800 font-bold bg-gray-50 p-2 rounded-lg">
+                                                            <span>Base (ARS)</span>
+                                                            <span>$ {costInARS.toLocaleString('es-AR')}</span>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center text-green-600 text-xs pl-4">
+                                                            <span className="flex items-center gap-1">
+                                                                + Margen ({usedMargin}%)
+                                                                {usedMargin !== parseFloat(formData.defaultMargin) && (
+                                                                    <span className="bg-green-100 text-green-700 px-1 rounded text-[10px]">REGLA</span>
+                                                                )}
+                                                            </span>
+                                                            <span>+ $ {(priceWithMargin - costInARS).toLocaleString('es-AR')}</span>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-center text-blue-600 text-xs pl-4">
+                                                            <span>+ IVA ({formData.vatRate}%)</span>
+                                                            <span>+ $ {vatAmount.toLocaleString('es-AR')}</span>
+                                                        </div>
+
+                                                        <div className="pt-4 border-t border-gray-100 mt-4">
+                                                            <div className="flex justify-between items-end">
+                                                                <span className="text-sm font-bold text-gray-400 uppercase">Precio Final</span>
+                                                                <span className="text-3xl font-bold text-brand-dark leading-none">
+                                                                    $ {finalPrice.toLocaleString('es-AR')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-right text-[10px] text-gray-400 mt-1">
+                                                                Ejemplo para un juego de <span className="font-bold">{fakeCost} USD</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
@@ -587,6 +747,43 @@ const AdminSettings = () => {
                                             }}
                                             id="delete-confirm-input"
                                         />
+                                    </div>
+
+                                    {/* Botón de Reinicio de Estadísticas */}
+                                    <div className="p-3 border border-red-100 rounded bg-white/50 mb-2">
+                                        <h4 className="text-xs font-bold text-red-700 mb-1">Reiniciar Estadísticas (Pre-Lanzamiento)</h4>
+                                        <p className="text-[10px] text-gray-500 mb-3">
+                                            Borra todos los eventos de analítica y resetea los contadores de vista/carrito de los productos a cero.
+                                            Ideal para limpiar datos de prueba.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            disabled={!isTechUnlocked || verifying}
+                                            onClick={async () => {
+                                                const confirmInput = document.getElementById('delete-confirm-input');
+                                                if (confirmInput.value !== 'BORRAR') {
+                                                    toast.error('Debes escribir "BORRAR" arriba para confirmar.');
+                                                    return;
+                                                }
+
+                                                if (window.confirm('¿Confirmas que quieres BORRAR TODAS LAS ESTADÍSTICAS? No se puede deshacer.')) {
+                                                    setVerifying(true);
+                                                    try {
+                                                        await resetAnalytics();
+                                                        toast.success('Estadísticas reiniciadas correctamente');
+                                                        confirmInput.value = '';
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        toast.error('Error al reiniciar estadísticas');
+                                                    } finally {
+                                                        setVerifying(false);
+                                                    }
+                                                }
+                                            }}
+                                            className="w-full py-2 bg-white border border-red-300 text-red-600 hover:bg-red-50 font-bold rounded text-xs transition-colors"
+                                        >
+                                            REINICIAR SOLO ESTADÍSTICAS
+                                        </button>
                                     </div>
 
                                     <button

@@ -5,13 +5,16 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { Trash2, ShoppingBag, ArrowLeft, MessageCircle, Plus, Minus, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const Cart = () => {
     const { cart, removeFromCart, decrementQuantity, addToCart, getTotalPrice, clearCart } = useCartStore();
     const { consoles } = useConsoleStore();
+    const { trackBeginCheckout } = useAnalytics();
     const totalPrice = getTotalPrice();
 
     const handleWhatsAppClick = () => {
+        trackBeginCheckout(totalPrice, cart);
         const phoneNumber = "5492915764388";
 
         // Header
@@ -20,12 +23,12 @@ const Cart = () => {
         // Items
         cart.forEach(item => {
             const consoleName = consoles.find(c => c.id === item.console)?.name || item.console || 'Juego';
-            message += `- *${item.title}* (${consoleName})\n`;
-            message += `  Cant: ${item.quantity} x ${formatCurrency(item.price)}\n`;
+            message += `- * ${item.title}* (${consoleName}) \n`;
+            message += `  Cant: ${item.quantity} x ${formatCurrency(item.price)} \n`;
         });
 
         // Footer & Total
-        message += `\n*Total Final: ${formatCurrency(totalPrice)}*`;
+        message += `\n * Total Final: ${formatCurrency(totalPrice)}* `;
         message += `\n\nQuedo a la espera para coordinar el pago y envío. ¡Gracias!`;
 
         const encodedMessage = encodeURIComponent(message);

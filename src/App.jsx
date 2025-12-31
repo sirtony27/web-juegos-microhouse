@@ -31,7 +31,7 @@ function App() {
   const { fetchProducts } = useProductStore();
   const { fetchConsoles } = useConsoleStore();
   const { fetchSettings } = useSettingsStore();
-  const { trackVisit } = useAnalytics();
+  const { trackSessionStart } = useAnalytics();
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,7 +40,7 @@ function App() {
         fetchConsoles(),
         fetchProducts()
       ]);
-      trackVisit(); // Track daily visit
+      trackSessionStart(); // Track daily visit
     };
     loadData();
   }, []);

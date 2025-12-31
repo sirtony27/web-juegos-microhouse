@@ -102,7 +102,7 @@ const GameCard = ({ game }) => {
         e.preventDefault();
         e.stopPropagation();
         addToCart(game);
-        trackAddToCart(game.id);
+        trackAddToCart(game);
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 1500);
 

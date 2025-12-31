@@ -2,17 +2,20 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Search } from 'lucide-react';
 import { useCartStore } from '../store/useCartStore';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 import fullLogo from '../assets/logo-completo.png';
 
 const Navbar = () => {
     const totalItems = useCartStore((state) => state.getTotalItems());
     const navigate = useNavigate();
+    const { trackSearch } = useAnalytics();
     const [searchQuery, setSearchQuery] = React.useState('');
 
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchQuery.trim()) {
+            trackSearch(searchQuery);
             navigate(`/catalog/all?search=${encodeURIComponent(searchQuery)}`);
             setSearchQuery('');
         }
