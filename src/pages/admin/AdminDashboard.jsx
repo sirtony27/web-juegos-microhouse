@@ -11,7 +11,7 @@ import FadeImage from '../../components/ui/FadeImage';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
-    const { products, toggleVisibility, deleteProduct, syncPricesFromSheet } = useProductStore();
+    const { products, toggleVisibility, deleteProduct, syncPricesFromSheet, recalculatePrices } = useProductStore();
     const { settings, fetchSettings, syncExchangeRate } = useSettingsStore(); // Added syncExchangeRate
     const { globalMargin } = settings;
     const logout = useAuthStore((state) => state.logout);
@@ -19,7 +19,10 @@ const AdminDashboard = () => {
     useEffect(() => {
         const load = async () => {
             await fetchSettings();
-            syncExchangeRate(); // Silent check on mount
+            const updated = await syncExchangeRate(); // Silent check on mount
+            if (updated) {
+                recalculatePrices();
+            }
         };
         load();
     }, []);

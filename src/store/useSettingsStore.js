@@ -74,10 +74,10 @@ export const useSettingsStore = create((set, get) => ({
         const { settings, updateSettings, syncingExchange } = get();
 
         // Prevent parallel syncs
-        if (syncingExchange && !force) return;
+        if (syncingExchange && !force) return false;
 
         // If not auto and not forced, do nothing
-        if (!settings.autoExchangeRate && !force) return;
+        if (!settings.autoExchangeRate && !force) return false;
 
         set({ syncingExchange: true });
 
@@ -102,6 +102,7 @@ export const useSettingsStore = create((set, get) => ({
                     });
 
                     toast.success(`Dólar (${source}) actualizado: $${newRate}`, { id: 'dollar-update-success' });
+                    return true; // Updated
                 } else if (force) {
                     toast.info(`Dólar (${source}) sin cambios: $${newRate}`, { id: 'dollar-update-info' });
                 }
@@ -112,5 +113,6 @@ export const useSettingsStore = create((set, get) => ({
         } finally {
             set({ syncingExchange: false });
         }
+        return false; // No update
     }
 }));
