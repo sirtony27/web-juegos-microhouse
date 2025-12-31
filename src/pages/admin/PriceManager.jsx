@@ -102,7 +102,9 @@ const PriceManager = () => {
                 p.costPrice,
                 newSettings.customMargin || settings.globalMargin,
                 newSettings.discountPercentage || 0,
-                settings
+                settings,
+                p.manualPrice || 0,
+                p.currency || 'ARS'
             );
 
             const changes = {};
