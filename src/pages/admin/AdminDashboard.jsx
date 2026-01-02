@@ -7,7 +7,9 @@ import { RefreshCw, Edit, Eye, EyeOff, Trash, Plus, Settings, LogOut, Search, Do
 import { Link, useNavigate } from 'react-router-dom';
 import ProductModal from '../../components/admin/ProductModal';
 import AnalyticsDashboard from '../../components/admin/AnalyticsDashboard';
+import CollectionsModal from '../../components/admin/CollectionsModal';
 import FadeImage from '../../components/ui/FadeImage';
+import { useCollectionStore } from '../../store/useCollectionStore';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -45,6 +47,7 @@ const AdminDashboard = () => {
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
 
     const openModal = (product) => {
@@ -271,6 +274,16 @@ const AdminDashboard = () => {
                                 </div>
                                 <p className="text-xs text-gray-500">Edición masiva de márgenes y descuentos.</p>
                             </Link>
+
+                            <button onClick={() => setIsCollectionsModalOpen(true)} className="block w-full text-left bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all group">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="bg-amber-100 p-2 rounded-lg text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                                        <div className="w-5 h-5 flex items-center justify-center font-serif font-black text-lg leading-none">★</div>
+                                    </div>
+                                    <h4 className="font-bold text-gray-800">Destacados Home</h4>
+                                </div>
+                                <p className="text-xs text-gray-500">Gestionar colecciones y secciones destacadas.</p>
+                            </button>
                         </div>
                     </div>
 
@@ -293,6 +306,11 @@ const AdminDashboard = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 productToEdit={selectedProduct}
+            />
+
+            <CollectionsModal
+                isOpen={isCollectionsModalOpen}
+                onClose={() => setIsCollectionsModalOpen(false)}
             />
         </div>
     );

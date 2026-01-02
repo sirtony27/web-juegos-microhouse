@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Gamepad2, Disc, Play, MapPin, MousePointerClick, Truck, Package, HelpCircle } from 'lucide-react';
 import { useConsoleStore } from '../store/useConsoleStore';
+import { useCollectionStore } from '../store/useCollectionStore';
 import { Helmet } from 'react-helmet-async'; // Import Helmet
 
 const Home = () => {
@@ -26,6 +27,13 @@ const Home = () => {
     // Dynamic Consoles
     const { consoles } = useConsoleStore();
     const activeConsoles = consoles.filter(c => c.active);
+
+    // Dynamic Collections
+    const { collections, fetchCollections } = useCollectionStore();
+
+    useEffect(() => {
+        fetchCollections();
+    }, []);
 
     const getConsoleDetails = (id) => {
         switch (id) {
@@ -66,9 +74,9 @@ const Home = () => {
                     className="grid gap-6 max-w-4xl z-10"
                 >
                     {/* Location Badge */}
-                    <motion.div variants={item} className="inline-flex items-center justify-center gap-2 mx-auto px-3 py-1 rounded-full bg-brand-red/10 border border-brand-red/20 backdrop-blur-md">
-                        <MapPin size={14} className="text-brand-red" />
-                        <span className="text-xs font-bold text-brand-red tracking-wider uppercase">Exclusivo Bahía Blanca y Zona</span>
+                    <motion.div variants={item} className="inline-flex items-center justify-center gap-2 mx-auto px-4 py-2 rounded-full bg-brand-red border border-brand-red/50 shadow-lg shadow-brand-red/20 mb-4">
+                        <MapPin size={16} className="text-white" />
+                        <span className="text-sm font-bold text-white tracking-wider uppercase">Exclusivo Bahía Blanca y Zona</span>
                     </motion.div>
 
                     <motion.h1 variants={item} className="font-display font-bold text-5xl md:text-7xl lg:text-8xl tracking-tight text-white leading-tight">
@@ -134,9 +142,10 @@ const Home = () => {
                     </Link>
                 </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {activeConsoles.map((console, index) => {
                         const defaultDetails = getConsoleDetails(console.id);
+                        const isNew = console.name?.toLowerCase().includes('switch 2');
                         return (
                             <motion.div
                                 key={console.id}
@@ -147,15 +156,49 @@ const Home = () => {
                             >
                                 <CategoryCard
                                     title={console.name}
-                                    subtitle={console.iconUrl ? 'Plataforma' : defaultDetails.subtitle}
                                     icon={defaultDetails.icon}
                                     iconUrl={console.iconUrl}
-                                    color={defaultDetails.color}
                                     to={`/catalog/${console.id}`}
+                                    isNew={isNew}
                                 />
                             </motion.div>
                         );
                     })}
+                </div>
+            </section>
+
+            {/* COLLECTIONS SECTION */}
+            <section className="container mx-auto px-4 pb-16">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-8 flex items-center gap-4"
+                >
+                    <h2 className="font-display font-bold text-3xl text-white">Sagas y Colecciones Destacadas</h2>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {collections.map((col, index) => (
+                        <motion.div
+                            key={col.id || col.title}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.1 }}
+                        >
+                            <CollectionCard
+                                title={col.title}
+                                keyword={col.keyword}
+                                color={col.bgType === 'gradient' ? (col.color.replace('bg-gradient-to-br ', '')) : ''}
+                                imageUrl={col.imageUrl}
+                                extraOverlay={col.extraOverlay}
+                            />
+                        </motion.div>
+                    ))}
+                    {collections.length === 0 && (
+                        <p className="col-span-full text-center text-gray-500">No hay colecciones destacadas.</p>
+                    )}
                 </div>
             </section>
         </div>
@@ -171,41 +214,72 @@ const BentoCard = ({ icon: Icon, title, desc, delay }) => (
         transition={{ delay }}
         className="bg-white/5 border border-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/10 transition-colors h-full"
     >
-        <div className="w-12 h-12 rounded-xl bg-brand-surface border border-white/10 flex items-center justify-center mb-4 text-brand-red shadow-lg shadow-black/20">
-            <Icon size={24} />
+        <div className="w-16 h-16 rounded-2xl bg-brand-surface border border-white/10 flex items-center justify-center mb-4 text-brand-red shadow-lg shadow-black/20">
+            <Icon size={40} />
         </div>
         <h3 className="text-xl font-display font-bold text-white mb-2">{title}</h3>
-        <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
+        <p className="text-gray-300 text-sm leading-relaxed">{desc}</p>
     </motion.div>
 );
 
 // Category Card Subcomponent
-const CategoryCard = ({ title, subtitle, icon: Icon, iconUrl, color, delay, to }) => (
+const CategoryCard = ({ title, icon: Icon, iconUrl, to, isNew }) => (
     <Link to={to} className="block group h-full">
         <motion.div
-            className="relative h-56 rounded-2xl overflow-hidden cursor-pointer border border-white/5 group-hover:border-white/20 transition-all shadow-lg hover:shadow-2xl hover:shadow-black/50"
+            className="relative h-64 rounded-2xl overflow-hidden cursor-pointer border border-gray-800 bg-gradient-to-br from-gray-900 to-black group-hover:border-red-600 transition-all duration-300 shadow-lg group-hover:shadow-red-600/20 group-hover:-translate-y-1"
         >
-            {/* Background Gradient */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-20 group-hover:opacity-40 transition-opacity duration-500`} />
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] group-hover:backdrop-blur-none transition-all duration-500" />
+            {/* Background Effects */}
+            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-all duration-500" />
 
-            <div className="absolute inset-0 p-8 flex flex-col justify-end z-10">
-                <div className="mb-auto p-3 bg-white/5 w-fit rounded-xl backdrop-blur-md text-white group-hover:scale-110 group-hover:bg-white/10 transition-all duration-300 flex items-center justify-center min-w-[56px] min-h-[56px]">
+            {/* Content */}
+            <div className="absolute inset-0 p-6 flex flex-col items-center justify-center z-10 text-center">
+                {/* Badge */}
+                {isNew && (
+                    <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-md shadow-lg z-20">
+                        NUEVO
+                    </div>
+                )}
+
+                <div className="mb-4 p-4 bg-white/5 rounded-full backdrop-blur-md text-white group-hover:scale-110 group-hover:bg-white/10 transition-all duration-300 flex items-center justify-center w-20 h-20 shadow-inner border border-white/5">
                     {iconUrl ? (
-                        <img src={iconUrl} alt={title} className="w-8 h-8 object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" />
+                        <img src={iconUrl} alt={title} className="w-10 h-10 object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" />
                     ) : (
-                        <Icon size={32} />
+                        <Icon size={40} />
                     )}
                 </div>
-                <div className="transform group-hover:translate-y-[-5px] transition-transform duration-300">
-                    <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1 group-hover:text-white transition-colors">{subtitle}</p>
-                    <h3 className="font-display text-3xl font-bold text-white group-hover:text-white">{title}</h3>
-                </div>
-                <div className="absolute bottom-8 right-8 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                    <ChevronRight className="text-white" size={28} />
+
+                <div className="transform transition-transform duration-300">
+                    <h3 className="font-display text-2xl md:text-3xl font-black text-white group-hover:text-red-500 transition-colors uppercase tracking-wider">{title}</h3>
                 </div>
             </div>
         </motion.div>
+    </Link>
+);
+
+// Collection Card Component
+const CollectionCard = ({ title, keyword, color, imageUrl, extraOverlay }) => (
+    <Link to={`/catalog/all?search=${keyword}`} className="block group">
+        <div
+            className={`relative h-48 rounded-2xl overflow-hidden cursor-pointer border border-white/5 group-hover:border-white/20 transition-all shadow-lg bg-cover bg-center ${imageUrl ? 'bg-no-repeat' : `bg-gradient-to-br ${color}`}`}
+            style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : {}}
+        >
+            {/* Overlay for Readability */}
+            <div className={`absolute inset-0 transition-all duration-300 ${imageUrl ? 'bg-black/60 group-hover:bg-black/40' : (extraOverlay ? 'bg-black/70' : 'bg-black/50')}`} />
+
+            {/* Content */}
+            <div className="absolute inset-0 p-6 flex flex-col justify-end z-10">
+                <div className="transform group-hover:translate-x-2 transition-transform duration-300">
+                    <h3 className="font-display text-2xl font-bold text-white mb-1 group-hover:text-brand-red transition-colors drop-shadow-md">{title}</h3>
+                    <div className="flex items-center gap-2 text-gray-200 text-sm font-medium group-hover:text-white transition-colors drop-shadow-sm">
+                        <span>Ver colección</span>
+                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Hover Glow Effect */}
+            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none" />
+        </div>
     </Link>
 );
 
